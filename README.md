@@ -68,7 +68,7 @@ python test.py
 
 ## Contributors
 
-[Daniela Olave-Rojas](https://github.com/dolaver/), Pierlugi Cerulo and David Olave-Rojas
+[Daniela Olave-Rojas](https://github.com/dolaver/) and Pierlugi Cerulo
 
 ## Acknowledgements
 
