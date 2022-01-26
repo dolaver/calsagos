@@ -68,11 +68,11 @@ python test.py
 
 ## Contributors
 
-[Daniela Olave-Rojas](https://github.com/dolaver/) and Pierlugi Cerulo
+[Daniela Olave-Rojas](https://github.com/dolaver/), Pierlugi Cerulo and David Olave-Rojas
 
 ## Acknowledgements
 
-We gratefully acknowledge the collaborators of this project for giving us permission to use the data to test this package and for providing us important observations about the work. We especially thank Claudia Mendes de Oliveira and Pablo Araya-Araya for give us access to the mock catalogues from the Southern Photometric Local Universe Survey (S- PLUS; Mendes de Oliveira et al. 2019) and to David Olave-Rojas for help us to develop this package. We are also grateful to Ricardo Demarco, Yara Jaffé and Doego Pallero for their input on this project. Finally, we want to thank everyone who has tested CALSAGOS extensively and provided us with invaluable feedback.
+We gratefully acknowledge the collaborators of this project for giving us permission to use the data to test this package and for providing us important observations about the work. We especially thank Claudia Mendes de Oliveira and Pablo Araya-Araya for give us access to the mock catalogues from the Southern Photometric Local Universe Survey (S- PLUS; Mendes de Oliveira et al. 2019) and to David Olave-Rojas for help us to develop this package. We are also grateful to Ricardo Demarco, Yara Jaffé and Diego Pallero for their input on this project. Finally, we want to thank everyone who has tested CALSAGOS extensively and provided us with invaluable feedback.
 
 
 ## License
