@@ -59,6 +59,8 @@ A catalogue with cluster members and substructure identification
 
 ![alt tag](https://i.ibb.co/09cmzmC/output-CALSAGOS.png)
 
+<a href="https://ibb.co/c81ksk6"><img src="https://i.ibb.co/09cmzmC/output-CALSAGOS.png" alt="output-CALSAGOS" border="0"></a>
+
 ## API
 
 Full CALSAGOS documentation can be viewed online in [html](http://www.baryons.org/ezgal/manual/) and [pdf](http://www.baryons.org/ezgal/manual.pdf) formats. # CAMBIAR
