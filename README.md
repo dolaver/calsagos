@@ -57,7 +57,7 @@ A catalogue with cluster members and substructure identification
 ![alt tag](http://www.baryons.org/ezgal/z_ml.png) # CAMBIAR 
 
 
-![alt tag](https://ibb.co/c81ksk6)
+![alt tag](https://i.ibb.co/09cmzmC/output-CALSAGOS.png)
 
 ## API
 
