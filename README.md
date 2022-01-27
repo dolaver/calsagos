@@ -54,9 +54,11 @@ Which makes:
 
 A catalogue with cluster members and substructure identification
 
-![alt tag](https://i.ibb.co/09cmzmC/output-CALSAGOS.png)
+![alt tag](https://i.ibb.co/j8dRSjr/output-catalogue-CALSAGOS.png)
 
-<a href="https://ibb.co/c81ksk6"><img src="https://i.ibb.co/09cmzmC/output-CALSAGOS.png" alt="output-CALSAGOS" border="0"></a>
+This catalog can be plotted to be able to see in the cluster and its substructures in the sky
+
+![alt tag](https://i.ibb.co/09cmzmC/output-CALSAGOS.png)
 
 ## API
 
