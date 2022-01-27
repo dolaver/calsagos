@@ -54,9 +54,6 @@ Which makes:
 
 A catalogue with cluster members and substructure identification
 
-![alt tag](http://www.baryons.org/ezgal/z_ml.png) # CAMBIAR 
-
-
 ![alt tag](https://i.ibb.co/09cmzmC/output-CALSAGOS.png)
 
 <a href="https://ibb.co/c81ksk6"><img src="https://i.ibb.co/09cmzmC/output-CALSAGOS.png" alt="output-CALSAGOS" border="0"></a>
