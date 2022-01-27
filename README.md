@@ -64,7 +64,7 @@ Gray dots correspond to the cluster and the dots in other colors represent the s
 
 ## API
 
-Full CALSAGOS documentation can be viewed online in [html](http://www.baryons.org/ezgal/manual/) and [pdf](http://www.baryons.org/ezgal/manual.pdf) formats. # CAMBIAR
+Full CALSAGOS documentation can be viewed in [pdf](http://www.baryons.org/ezgal/manual.pdf) format. # CAMBIAR
 
 If your scientific publication is based on either version of CALSAGOS, then please cite Olave-Rojas et al. 2022
 
