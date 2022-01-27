@@ -58,7 +58,7 @@ A catalogue with cluster members and substructure identification
 
 This catalog can be plotted to be able to see in the cluster and its substructures in the sky
 
-![alt tag](https://i.ibb.co/09cmzmC/output-CALSAGOS.png)
+![alt tag](https://i.ibb.co/VS5GCNk/output-CALSAGOS.png)
 
 Gray dots correspond to the cluster and the dots in other colors represent the substructures in and around the cluster
 
