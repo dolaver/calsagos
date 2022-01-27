@@ -54,7 +54,7 @@ Which makes:
 
 A catalogue with cluster members and substructure identification
 
-![alt tag](http://www.baryons.org/ezgal/z_ml.png) # CAMBIAR 
+![alt tag](https://drive.google.com/file/d/1jCM6QQia4umr399QW5aeJeWFCZxKQ-o3/view?usp=sharing) # CAMBIAR 
 
 ## API
 
