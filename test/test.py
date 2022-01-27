@@ -14,7 +14,7 @@ from calsagos import clumberi
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
 
-def test_calsagos(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cluster_mass, cluster_initial_redshift, ra_cluster, dec_cluster, input_H, input_Omega_L, input_Omega_m, range_cuts, n_galaxies, final_cluster_catalog):
+def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cluster_mass, cluster_initial_redshift, ra_cluster, dec_cluster, input_H, input_Omega_L, input_Omega_m, range_cuts, n_galaxies, final_cluster_catalog):
 
     #-- Preliminar selection of galaxies in the area of clusters 
 
@@ -122,7 +122,7 @@ t = time.localtime()
 current_time = time.strftime("%H:%M:%S", t)
 print("start time", current_time)
 
-test_calsagos(ID, RA, DEC, redshift, cluster_mass, starting_redshift, central_ra, central_dec, cluster_H_mock, cluster_Omega_L_mock, cluster_Omega_m_mock, cut, ngal, final_output_catalog)
+test_calsagos_clumberi(ID, RA, DEC, redshift, cluster_mass, starting_redshift, central_ra, central_dec, cluster_H_mock, cluster_Omega_L_mock, cluster_Omega_m_mock, cut, ngal, final_output_catalog)
 
 t = time.localtime()
 current_time = time.strftime("%H:%M:%S", t)
