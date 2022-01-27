@@ -114,7 +114,7 @@ central_ra = 96.54288696045 # -- right ascention of the cluster in degree units
 central_dec = -7.813029470475 # -- declination of the cluster in degree units  
 
 #-- OUTPUT CATALOGS
-final_output_catalog = 'output_CALSAGOS_test.cat'
+final_output_catalog = 'output_CALSAGOS_CLUMBERI.cat'
 
 #-- RUNNING THE SCRIPT
 
