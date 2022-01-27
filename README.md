@@ -57,7 +57,7 @@ A catalogue with cluster members and substructure identification
 ![alt tag](http://www.baryons.org/ezgal/z_ml.png) # CAMBIAR 
 
 
-![alt tag](https://drive.google.com/file/d/1cRYxVQoFIg-sg756C1_pNOi7TfNLQzzT/view)
+![alt tag](https://ibb.co/c81ksk6)
 
 ## API
 
