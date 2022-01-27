@@ -60,6 +60,8 @@ This catalog can be plotted to be able to see in the cluster and its substructur
 
 ![alt tag](https://i.ibb.co/09cmzmC/output-CALSAGOS.png)
 
+Gray dots correspond to the cluster and the dots in other colors represent the substructures in and around the cluster
+
 ## API
 
 Full CALSAGOS documentation can be viewed online in [html](http://www.baryons.org/ezgal/manual/) and [pdf](http://www.baryons.org/ezgal/manual.pdf) formats. # CAMBIAR
