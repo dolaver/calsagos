@@ -12,7 +12,4 @@ setup(name='calsagos',
       author_email='daniela.olave@utalca.cl - pcerulo@inf.udec.cl',
       url = "https://github.com/dolaver/calsagos",
       packages=['calsagos'],  #same as name
-      scripts = ['clumberi.py', 'cluster_kinematics.py',
-                 'ds_test.py', 'isomer.py', 'lagasu.py',
-                 'redshift_boundaries.py', 'utils.py']
       )
