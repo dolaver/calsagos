@@ -6,8 +6,10 @@ In order to search, find and identify substructures and groups in and around a g
 
 ## Install
 
+You must istall kneebow prior to install CALSAGOS
+
 ```
-pip install calsagos
+python3 setup.py install
 ```
 
 ## Example Usage
