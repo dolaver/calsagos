@@ -6,7 +6,7 @@ In order to search, find and identify substructures and groups in and around a g
 
 ## Install
 
-You must istall kneebow prior to install CALSAGOS
+You must install numpy, astropy, matplotlib, sys, math, sklearn, scipy and kneebow prior to install CALSAGOS
 
 ```
 python3 setup.py install
