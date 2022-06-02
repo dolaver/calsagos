@@ -664,7 +664,7 @@ def best_eps_dbscan(id, distance):
     best = np.where(number == elbow_idx)[0]
     best_eps = galaxy_distance[best]
 
-    # -- defininf the elbow distance
+    # -- defining the elbow distance
     elbow_distance = float(best_eps)
 
     # -- returning output quantity
@@ -829,8 +829,6 @@ def rename_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy, ra_c
     label_central_substructure = central_substructure_values[0]
     ra_central_substructure = central_substructure_values[1]
     dec_central_substructure = central_substructure_values[2]
-    redshift_central_substructure = central_substructure_values[3]
-    n_members_substructures = central_substructure_values[4]
 
     # -- estimating the distance of each substructure from the central position of the principal halo
     distance_to_center_substructure = calc_angular_distance(ra_central_substructure, dec_central_substructure, ra_cluster, dec_cluster, "degrees")
