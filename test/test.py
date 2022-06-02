@@ -14,7 +14,7 @@ from calsagos import clumberi
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
 
-def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cluster_mass, cluster_initial_redshift, ra_cluster, dec_cluster, input_H, input_Omega_L, input_Omega_m, range_cuts, n_galaxies, final_cluster_catalog):
+def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cluster_mass, cluster_initial_redshift, ra_cluster, dec_cluster, input_H, input_Omega_L, input_Omega_m, range_cuts, n_galaxies, flag, final_cluster_catalog):
 
     #-- Preliminar selection of galaxies in the area of clusters 
 
@@ -60,6 +60,9 @@ def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cl
     redshift_candidates = label_candidates[3]
     label_final = label_candidates[5]
 
+    # -- renaming the substructures identified by using lagasu
+    id_final = utils.rename_substructures(ra_candidates, dec_candidates, redshift_candidates, label_final, ra_cluster, dec_cluster, r200_degree, "zspec")
+
     #-- defining the number of galaxies in the cluster to print a table with output results
     n_members = id_member.size
 
@@ -72,7 +75,7 @@ def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cl
 
     for ii in range(n_members):
 
-        print(id_candidates[ii], ra_candidates[ii], dec_candidates[ii], redshift_candidates[ii], label_final[ii])
+        print(id_candidates[ii], ra_candidates[ii], dec_candidates[ii], redshift_candidates[ii], id_final[ii])
          
     sys.stdout = sys.__stdout__
 
@@ -86,7 +89,7 @@ def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cl
 #-- INPUT PARAMETERS
 
 #-- Catalogue
-input_mock_catalog = 'galaxies_clean_all_cluster_26.cat'
+input_mock_catalog = 'input_mock_SPLUS_catalogue.cat'
 
 # -- reading quantities from the galaxies in mock catalog
 catalog_table = Table.read(input_mock_catalog, format='ascii')
