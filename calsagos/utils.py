@@ -20,7 +20,7 @@ VERSION = '0.1'
 
 def calc_mean_and_standard_error(input_array):
 
-    """ error = calsagos.utils.calc_mean_and_standard_error(value_array, flag)
+    """ error = calsagos.utils.calc_mean_and_standard_error(value_array)
 
     This function was developed by P. Cerulo (07/02/2015)
 
@@ -604,7 +604,7 @@ def best_eps_dbscan(id, distance):
     :param distance: distance between 
         galaxies
 
-    :type id_galaxy array
+    :type id_galaxy: array
     :type galaxy_distance: array
 
 	:returns: elbow distance between galaxies
@@ -669,6 +669,272 @@ def best_eps_dbscan(id, distance):
 
     # -- returning output quantity
     return elbow_distance
+
+#####################################################################################################################################################################################
+#####################################################################################################################################################################################
+
+def estimate_central_coordinates_substructures(ra, dec, redshift, label):
+
+    """ calsagos.utils.estimate_central_coordinates_substructures(ra, dec, redshift, label, gmmcut, output_catalog)
+
+    Function that estimates the central coordinates 
+    and values to each identified substructures by 
+    using LAGASU.
+
+    This funcion was develop by D. Olave-Rojas
+    (01/06/2022)
+
+	:param ra: Right Ascention (R.A.) of each 
+        galaxy in the catalogue with substructures
+	:param dec: Declination (Dec.) of each 
+        galaxy in the catalogue with substructures
+    :param redshift: redshift of each galaxy in
+        the catalogue with substructures
+    param label: label to identify each 
+        substructure 
+
+    :type ra: array
+    :type dec: array
+    :type redshift: array
+    :type label: array
+
+	:returns: central coordinates and redshift
+        of each substructure
+	:rtype: array
+
+	""" 
+
+    # -- removing galaxies that are part of the principal halo
+    good = np.where(label >= 0)[0]
+
+    good_ra = ra[good]
+    good_dec = dec[good]
+    good_redshift = redshift[good]
+    good_label = label[good]
+
+    # -- defining unique label to each groups
+    groups = np.unique(good_label) 
+
+    # -- defining the number of groups
+    dim_groups = len(groups)
+
+    # -- defining output quantities
+    center_ra = np.zeros(dim_groups)
+    center_dec = np.zeros(dim_groups)
+    center_redshift = np.zeros(dim_groups)
+
+    #--- START OF LOOP ---
+    for ii in range(0,dim_groups): 
+
+        #-- selecting a single substructure
+        n_groups = np.where(good_label == ii)[0] 
+
+        ra_group = good_ra[n_groups]
+        dec_group = good_dec[n_groups]
+        redshift_group = good_redshift[n_groups]
+        
+        # -- determining central position and redshift of the each identified substructure
+        center_ra = np.median(ra_group)
+        center_dec = np.median(dec_group)
+        center_redshift = np.median(redshift_group)
+            
+        if ii != 0:
+            central_ra = np.append(central_ra, center_ra)
+            central_dec = np.append(central_dec, center_dec)
+            central_redshift = np.append(central_redshift, center_redshift)
+            n_members = np.append(n_members, len(ra_group))
+
+        #-- process of the first iteration: defining variables
+        else:                
+            central_ra = center_ra # array with the unique labels that could be assign to a single galaxy
+            central_dec = center_dec
+            central_redshift = center_redshift
+            n_members = len(ra_group)
+
+    #-- building matrix with output quantities
+    central_values = np.array([groups, central_ra, central_dec, central_redshift, n_members], dtype=object)
+
+    #-- returning output quantity
+    return central_values
+
+#####################################################################################################################################################################################
+#####################################################################################################################################################################################
+
+def rename_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy, ra_cluster, dec_cluster, r200, flag): 
+
+    """ calsagos.utils.rename_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy, ra_cluster, dec_cluster, r200)
+
+    Function that estimates rename te substructures
+    depending of the type of the sample
+
+    This funcion was develop by D. Olave-Rojas
+    (02/06/2022)
+
+	:param ra_galaxy: Right Ascention (R.A.) of each 
+        galaxy in the catalogue with substructures
+	:param dec_galaxy: Declination (Dec.) of each 
+        galaxy in the catalogue with substructures
+    :param redshift_galaxy: redshift of each galaxy in
+        the catalogue with substructures
+    :param id_galaxy: label to identify each 
+        substructure 
+    :param ra_cluster: central Right Ascention (R.A.)
+        of the cluster 
+    :param dec_cluster: central Declination (Dec.)
+        of the cluster 
+    :param r200: is the typical radius of a sphere 
+        with a mean density equal to 200 times the 
+        critical density. This parameter must be
+        in degrees
+    :param flag:  parameter that allows the user to 
+        choose between photometric of spectroscopic 
+        sample. If flag == 'zphot' the input must be
+        photometric sample. If flag == 'zspec" the 
+        input must be spectroscopic sample 
+
+    :type ra_galaxy: array
+    :type dec_galaxy: array
+    :type redshift_galaxy: array
+    :type id_galaxy: array
+    :type ra_cluster: float
+    :type dec_cluster: float
+    :type r200: float
+    :type flag: string
+
+	:param flag:
+	
+    :type value_array: array
+	:type flag: string
+
+	:returns: array with the new label of substructures
+	:rtype: array
+
+    .. note::
+
+    Due to the uncertainties in z-phot estimation, when 
+    the user set the parameter "flag" as "zphot" all 
+    substructures within r200 are considered as part of 
+    the principal halo. On the other hand, when the user 
+    set the parameter "flag" as "zspec" the nearest 
+    substructure to the center of the cluster is considered 
+    as the principal halo. Galaxies on the principal halo 
+    have an id = -1
+
+	""" 
+
+    # -- estimating central position, central redshift and number of members of each substructures 
+    central_substructure_values = estimate_central_coordinates_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy)
+
+    #-- defining central parameters to each susbtructure
+    label_central_substructure = central_substructure_values[0]
+    ra_central_substructure = central_substructure_values[1]
+    dec_central_substructure = central_substructure_values[2]
+    redshift_central_substructure = central_substructure_values[3]
+    n_members_substructures = central_substructure_values[4]
+
+    # -- estimating the distance of each substructure from the central position of the principal halo
+    distance_to_center_substructure = calc_angular_distance(ra_central_substructure, dec_central_substructure, ra_cluster, dec_cluster, "degrees")
+
+    # -- defining output quantities
+    dim_substructures = len(label_central_substructure)
+    new_label = np.zeros(dim_substructures) # new_label is the array with the id of substructures that must be treat as part of the principal halo
+
+    # -- establishing the criteria to assign galaxies to the principal halo
+    # Galaxies on the principal halo have an id = -1
+    if flag == "zphot":
+        # all substructures within r200 are considered as part of the principal halo.
+        for ii in range(0, dim_substructures):
+            if distance_to_center_substructure[ii] < r200:
+                new_label[ii] = -1
+
+            else:
+                new_label[ii] = label_central_substructure[ii]
+
+    if flag == "zspec":
+        # the nearest substructure to the center of the cluster is considered as the principal halo.
+        for ii in range(0, dim_substructures):
+            if distance_to_center_substructure[ii] == min(distance_to_center_substructure):
+                new_label[ii] = -1
+
+            else:
+                new_label[ii] = label_central_substructure[ii]        
+
+    #-- Here the correlative is assembled eliminating -1
+    label_real = [] # label_real is an array with the label of all idenitified substructures once we idenfied the substructures that are part of the principal halo
+
+    #--- START OF LOOP ---
+    for j in range(0,len(new_label)):
+
+        if new_label[j] != -1:
+            label_real = np.append(label_real, j)
+
+    for l in range(0,len(label_real)):
+
+        label_real[l] = l
+    # -- END OF LOOP --
+
+    # -- defining output quantities
+    dim =len(new_label)
+    p = [] # p is the array with the substructures that will be accepted as such
+
+    #--- START OF LOOP ---
+    for ii in range(0, dim):
+        if ii != 0:
+            if new_label[ii] != -1:
+                p1 = new_label[ii] 
+                p = np.append(p, p1)
+        else:
+            if new_label[ii] != -1:
+                p = new_label[ii]
+    # -- END OF LOOP --
+
+    # -- defining output quantities
+    dim_real = len(label_real)
+    p2 = [] # p2 is the array with the final label of the substructures
+
+    #--- START OF LOOP ---
+    for ii in range(0, dim):
+
+        if ii != 0:
+            if new_label[ii] == -1:
+                p22 = -1
+            else:
+                for jj in range(0, dim_real):
+
+                    if p[jj] == new_label[ii]:
+                        
+                        p22 = label_real[jj]
+
+            p2 = np.append(p2,p22)
+        else:
+            if new_label[ii] == -1:
+                p2 = -1
+    # -- END OF LOOP --
+
+    # -- defining output quantities
+    dim_halos = label_central_substructure.size
+    dim_sample = id_galaxy.size
+    new_id = np.zeros(dim_sample) #new_id is the final id for each galaxy in each substructure
+
+    # -- changing the id of each galaxy in each substructure
+    #--- START OF LOOP ---
+    for ii in range(dim_sample):
+
+        for jj in range (dim_halos):
+
+            if id_galaxy[ii] == -1:
+                new_id[ii] = -1
+
+            if id_galaxy[ii] == label_central_substructure[jj]:
+
+                new_id[ii] = p2[jj]
+    # -- END OF LOOP --
+
+    # -- defining the final substructure id
+    final_id = new_id
+
+    #-- returning output quantity
+    return final_id
 
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
