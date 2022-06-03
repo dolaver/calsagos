@@ -61,7 +61,7 @@ def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cl
     label_final = label_candidates[5]
 
     # -- renaming the substructures identified by using lagasu
-    id_final = utils.rename_substructures(ra_candidates, dec_candidates, redshift_candidates, label_final, ra_cluster, dec_cluster, r200_degree, "zspec")
+    id_final = utils.rename_substructures(ra_candidates, dec_candidates, redshift_candidates, label_final, ra_cluster, dec_cluster, r200_degree, flag)
 
     #-- defining the number of galaxies in the cluster to print a table with output results
     n_members = id_member.size
@@ -107,6 +107,7 @@ cluster_Omega_m_mock = 0.315
 #-- GENERAL PARAMETERS
 cut = 15 # -- number of Gaussians to be fitted in the CLUMBERI and LAGASU implementation
 ngal = 3 # -- number of minimum of galaxies that a group or substructure must have
+sample = "zspec"
 
 starting_redshift = 0.337461208999 # -- central redshift of the cluster
 mass =  14.889801427038481 # -- log(m_cl/m_sun) of the cluster
@@ -125,7 +126,7 @@ t = time.localtime()
 current_time = time.strftime("%H:%M:%S", t)
 print("start time", current_time)
 
-test_calsagos_clumberi(ID, RA, DEC, redshift, cluster_mass, starting_redshift, central_ra, central_dec, cluster_H_mock, cluster_Omega_L_mock, cluster_Omega_m_mock, cut, ngal, final_output_catalog)
+test_calsagos_clumberi(ID, RA, DEC, redshift, cluster_mass, starting_redshift, central_ra, central_dec, cluster_H_mock, cluster_Omega_L_mock, cluster_Omega_m_mock, cut, ngal, sample, final_output_catalog)
 
 t = time.localtime()
 current_time = time.strftime("%H:%M:%S", t)
