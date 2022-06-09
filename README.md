@@ -89,4 +89,4 @@ We gratefully acknowledge the collaborators of this project for giving us permis
 
 ## License
 
-MIT 
+This project is licensed under the terms of the [MIT](https://github.com/dolaver/calsagos/blob/main/LICENSE) license
