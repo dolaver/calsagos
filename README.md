@@ -48,6 +48,9 @@ redshift_candidates = label_candidates[3]
 label_zcut = label_candidates[4]
 label_final = label_candidates[5]    
 
+# -- renaming the substructures identified by using lagasu in order to identify the principal halo and separate it from the substructures
+id_final = utils.rename_substructures(ra_candidates, dec_candidates, redshift_candidates, label_final, ra_cluster, dec_cluster, r200_degree, flag)
+    
 # all done
 
 ```
