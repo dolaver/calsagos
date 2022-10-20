@@ -851,7 +851,11 @@ def rename_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy, ra_c
             for ii in range(0, dim_substructures):
                 if distance_to_center_substructure[ii] < r200:
                     new_label[ii] = -1
-
+                
+		# in the case that there are not substructures within r200 of the cluster the nearest substructure to the center of the cluster is considered as the principal halo.
+		elif distance_to_center_substructure[ii] == min(distance_to_center_substructure):
+                    new_label[ii] = -1
+		
                 else:
                     new_label[ii] = label_central_substructure[ii]
 
