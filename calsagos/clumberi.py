@@ -167,7 +167,7 @@ def clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cluster_initial_
     ra_bic = means_bic[:,0]
     dec_bic = means_bic[:,1]
     redshift_bic = means_bic[:,2]
-
+   
     # -- putting a label to each galaxy. This label allows us to separe and assign each galaxy to a redshift cut
     labels_bic = clf.predict(candidate_galaxies) # using this label we can separate galaxies into n groups that correspond to redshifts cuts
 
@@ -183,6 +183,9 @@ def clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cluster_initial_
     # -- selecting the minimum redshift distance
     min_redshift = min(distance_redshift)
 
+   # -- estimating the combined distance of redshift and position
+    delta = np.sqrt(angular_distance**2. + distance_redshift**2.)
+
     # -- selecting the closest Gaussian, in redshift and position to the center of the cluster
     dim = angular_distance.size
     
@@ -191,8 +194,9 @@ def clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cluster_initial_
             
             good_sample = np.where( (angular_distance == min(angular_distance)) & (distance_redshift == min(distance_redshift)) )[0]
 
-        else: 
-            good_sample = np.where( (angular_distance == min(angular_distance)) )[0]
+        else:
+
+            good_sample = np.where( (delta == min(delta)) )[0]
 
     # -- selecting the labels of the multiple Gaussians found by GMM 
     unique_labels = np.unique(labels_bic)
@@ -241,7 +245,7 @@ def clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cluster_initial_
         # -- until there are no longer outliers
         if outliers.size == 0:
             break
-
+        
     # -- removing all galaxies at more than 3 x sigma from the cluster redshift distribution of galaxies 
     final_cluster_sample = np.where( (redshift_galaxy > (new_cluster_redshift -3*sigma_clean_sample)) & (redshift_galaxy < + (new_cluster_redshift + 3*sigma_clean_sample)) )[0]
 
