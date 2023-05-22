@@ -22,12 +22,14 @@ def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cl
     r200_kpc = utils.calc_radius_finn(cluster_mass, cluster_initial_redshift, input_H, input_Omega_L, input_Omega_m, "kiloparsec")
 
     #-- converting the radius in kpc to a radius in angular units
-    r200_degree = utils.convert_kpc_to_angular_distance(r200_kpc, cluster_initial_redshift, input_H, input_Omega_m, "degrees")
+    #-- NOTE: if the user has an estimate of the r200 of the cluster it is not necessary to calculate this quantity
+    r200_degree = utils.convert_kpc_to_angular_distance(r200_kpc, cluster_initial_redshift, input_H, input_Omega_m, "degrees") 
 
     #-- estimating the euclidean angular distance for each galaxy with respect to the central position of the cluster
     distance = utils.calc_angular_distance(ra_galaxy, dec_galaxy, ra_cluster, dec_cluster, "degrees")
 
-    #-- setting a cut of galaxies within r200
+    #-- setting a cut of galaxies within 3r200
+    #-- NOTE: this cut is only to clean the mock catalogue. In a real case the user can decide if apply or not this cut
     good_galaxy = np.where( distance <= 3.*r200_degree)[0]
 
     #-- selecting galaxies within a cut  3r200
@@ -37,6 +39,7 @@ def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cl
     redshift_good = redshift_galaxy[good_galaxy]
 
     #-- select cluster members
+    #-- NOTE: if the user has a catalogue with the cluster members it is not necessary to select them newly
     cluster_members = clumberi.clumberi(id_good, ra_good, dec_good, redshift_good, cluster_initial_redshift, ra_cluster, dec_cluster, range_cuts)
     id_member = cluster_members[0]
     ra_member = cluster_members[1]
@@ -51,17 +54,14 @@ def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cl
     typical_separation = utils.best_eps_dbscan(id_member, knn_galaxy_distance)
 
     #-- Assign galaxies to each substructures
-    label_candidates = lagasu.lagasu(id_member, ra_member, dec_member, redshift_member, range_cuts, typical_separation, n_galaxies)
+    label_candidates = lagasu.lagasu(id_member, ra_member, dec_member, redshift_member, range_cuts, typical_separation, n_galaxies, ra_cluster, dec_cluster, r200_degree, flag)
 
     #-- defining output parameters from lagasu
     id_candidates = label_candidates[0]
     ra_candidates = label_candidates[1]
     dec_candidates = label_candidates[2]
     redshift_candidates = label_candidates[3]
-    label_final = label_candidates[5]
-
-    # -- renaming the substructures identified by using lagasu
-    id_final = utils.rename_substructures(ra_candidates, dec_candidates, redshift_candidates, label_final, ra_cluster, dec_cluster, r200_degree, flag)
+    label_final = label_candidates[6]
 
     #-- defining the number of galaxies in the cluster to print a table with output results
     n_members = id_member.size
@@ -75,7 +75,7 @@ def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cl
 
     for ii in range(n_members):
 
-        print(id_candidates[ii], ra_candidates[ii], dec_candidates[ii], redshift_candidates[ii], id_final[ii])
+        print(id_candidates[ii], ra_candidates[ii], dec_candidates[ii], redshift_candidates[ii], label_final[ii])
          
     sys.stdout = sys.__stdout__
 
@@ -89,7 +89,7 @@ def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cl
 #-- INPUT PARAMETERS
 
 #-- Catalogue
-input_mock_catalog = 'input_mock_SPLUS_catalogue.cat'
+input_mock_catalog = '/home/dolaver/python_programs/mymodules/calsagos/test/input_mock_SPLUS_catalogue.cat'
 
 # -- reading quantities from the galaxies in mock catalog
 catalog_table = Table.read(input_mock_catalog, format='ascii')
@@ -118,7 +118,7 @@ central_ra = 96.54288696045 # -- right ascention of the cluster in degree units
 central_dec = -7.813029470475 # -- declination of the cluster in degree units  
 
 #-- OUTPUT CATALOGS
-final_output_catalog = 'output_CALSAGOS_CLUMBERI_catalogue.cat'
+final_output_catalog = 'output_CALSAGOS_CLUMBERI_catalogue_16May_hdbscan.cat'
 
 #-- RUNNING THE SCRIPT
 
