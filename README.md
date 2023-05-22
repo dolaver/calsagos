@@ -44,13 +44,13 @@ typical_separation = utils.best_eps_dbscan(id_member, knn_galaxy_distance)
 label_candidates = lagasu.lagasu(id_member, ra_member, dec_member, redshift_member, range_cuts, typical_separation, n_galaxies, ra_cluster, dec_cluster, r200, flag)
 
 #-- defining output parameters from lagasu
-id_candidates = label_candidates[0]
-ra_candidates = label_candidates[1]
-dec_candidates = label_candidates[2]
-redshift_candidates = label_candidates[3]
-label_zcut = label_candidates[4]
-label_dbscan = label_candidates[5]
-label_final = label_candidates[6]
+id_candidates = label_candidates[0] #-- id of reach galaxy in the catalog with cluster members
+ra_candidates = label_candidates[1] #-- R.A. of each galaxy in the catalog with cluster members
+dec_candidates = label_candidates[2] #-- Dec. of each galaxy in the catalog with cluster members
+redshift_candidates = label_candidates[3] #-- redshift of each galaxy in the catalog with cluster members
+label_zcut = label_candidates[4] #-- label of each galaxy in the catalog with cluster members. This parameter is given by GMM 
+label_dbscan = label_candidates[5] #-- label of each galaxy in the catalog with cluster members. This parameter is given by DBSCAN
+label_final = label_candidates[6] #-- label of each galaxy in the catalog with cluster members. Equal to -1 if the galaxy is part of the principal halo and has a value between 0 to N if th galaxy is part of a substructure 
     
 # all done
 
@@ -72,7 +72,7 @@ Gray dots correspond to the cluster and the dots in other colors represent the s
 
 <!-- Full CALSAGOS documentation can be viewed in  [pdf](http://www.baryons.org/ezgal/manual.pdf) format. # CAMBIAR -->
 
-If your scientific publication is based on either version of CALSAGOS, then please cite [Olave-Rojas et al. 2022](https://doi.org/10.1093/mnras/stac3762)
+If your scientific publication is based on either version of CALSAGOS, then please cite [Olave-Rojas et al. 2023](https://doi.org/10.1093/mnras/stac3762)
 
 ## Testing
 
@@ -84,7 +84,7 @@ An example can be find [here](https://github.com/dolaver/calsagos/tree/main/test
 
 ## Contributors
 
-[Daniela Olave-Rojas](https://github.com/dolaver/) and Pierlugi Cerulo
+[Daniela E. Olave-Rojas](https://github.com/dolaver/) and Pierlugi Cerulo
 
 ## Acknowledgements
 
