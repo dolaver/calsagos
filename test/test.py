@@ -89,7 +89,7 @@ def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cl
 #-- INPUT PARAMETERS
 
 #-- Catalogue
-input_mock_catalog = '/home/dolaver/python_programs/mymodules/calsagos/test/input_mock_SPLUS_catalogue.cat'
+input_mock_catalog = 'input_mock_SPLUS_catalogue.cat'
 
 # -- reading quantities from the galaxies in mock catalog
 catalog_table = Table.read(input_mock_catalog, format='ascii')
