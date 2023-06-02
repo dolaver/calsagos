@@ -13,20 +13,25 @@
 import numpy as np
 from sklearn import mixture
 from sklearn.cluster import DBSCAN
+import hdbscan
+
+from calsagos import utils
 
 __author__ = 'daniela.olave@utalca.cl (Daniela Olave-Rojas)'
 
-VERSION = '0.1' 
+VERSION = '0.1.2' 
 
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
 
-def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy_separation, n_galaxies):
+def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy_separation, n_galaxies, ra_cluster, dec_cluster, redshift_cluster, r200, flag):
 
     """ LAGASU is a function that assigns galaxies to different 
     susbtructures in and around a galaxy cluster
 
-    This function was developed by D. Olave-Rojas (05/07/2021)
+    This function was developed by D. E. Olave-Rojas and 
+    D. A. Olave-Rojas (05/07/2021) and was updated by 
+    D. E. Olave-Rojas (02/06/2023)
 
     The input of LAGASU can be a sample of galaxies in a cluster 
     of a sample of galaxies previously selected as potential 
@@ -36,7 +41,8 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
     (Dressler & Schectman 1988) 
 
     lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, 
-    range_cuts, galaxy_separation, n_galaxies)
+    range_cuts, galaxy_separation, n_galaxies, ra_cluster, 
+    dec_cluster, r200, flag)
 
 	:param ra_galaxy: is the Right Ascension of each galaxy in
         the sample. This parameter must be in degree units
@@ -54,18 +60,56 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
         galaxies in a substructure the units must be the 
         same as the ra_galaxy and dec_galaxy
     :param n_galaxies: minimum number of galaxies to define a group
+    :param ra_cluster: central Right Ascention (R.A.)
+        of the cluster 
+    :param dec_cluster: central Declination (Dec.)
+        of the cluster 
+    :param redshift_cluster: central redshift of the 
+        cluster
+    :param r200: is the typical radius of a sphere 
+        with a mean density equal to 200 times the 
+        critical density. This parameter must be
+        in degrees
+    :param flag:  parameter that allows the user to 
+        choose between photometric of spectroscopic 
+        sample. If flag == 'zphot' the input must be
+        photometric sample. If flag == 'zspec" the 
+        input must be spectroscopic sample 
 
-    :type ra_galaxy: array
-    :type dec_galaxy: array
-	:type redshift_galaxy: array
-    :type range_cuts: int
-    :type galaxy_separation: int, float 
-    :type n_galaxies: int, float
+    :type ra_galaxy         : array
+    :type dec_galaxy        : array
+	:type redshift_galaxy   : array
+    :type range_cuts        : int
+    :type galaxy_separation : int, float 
+    :type n_galaxies        : int, float
+    :type ra_cluster        : float
+    :type dec_cluster       : float
+    :type redshift_cluster  : float
+    :type r200              : float
+    :type flag              : string
 
 	:returns: label to each galaxy,
-        which corresponds to a number 
-        of substructure or noise
+        which corresponds to identify
+        each substructure
 	:rtype: array
+   
+    .. note::
+    
+    LAGASU will give us three labels as output: 
+    i) lagasu[4] that corresponds to the label 
+    putting by GMM and varies between 0 to N, 
+    ii) lagasu[5] that corresponds to the label 
+    putting by DBSCAN after to run gmm and varies 
+    between -1 to N, where -1 corresponds to noise
+    and galaxies within a substructure have a label 
+    between 0 to N, and iii) lagasu[6] that corresponds 
+    to the corrected label considering galaxies in
+    substructures and in the principal halo. Galaxies
+    in substructures are a label between 0 to N. 
+    Whereas, galaxies in the principal halo have
+    a label equal to -1. For details about this
+    correction see the help of the function
+    "rename_substructures" in utils module.
 
 	"""
     print("-- starting LAGASU --")
@@ -216,7 +260,7 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
     # -- END OF LOOP --
 
     #-- printing the total number of substructures in the cluster
-    print("number of substructures =", len(p3))
+#    print("number of substructures =", len(p3))
 
     #-- initializing the variables
     p_pos = 0
@@ -302,8 +346,12 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
             redshift_substructures = redshift_gal_out
             gmm_substructures = gmm_labels
 
+
+    # -- renaming the substructures identified by using lagasu in order to identify the principal halo and separate it from the substructures
+    id_final = utils.rename_substructures(ra_substructures, dec_substructures, redshift_substructures, labels_dbscan_corr, ra_cluster, dec_cluster, redshift_cluster, r200, flag)
+
     #-- building matrix with output quantities
-    lagasu_parameters = np.array([id_substructures, ra_substructures, dec_substructures, redshift_substructures, gmm_substructures, labels_dbscan_corr], dtype=object)
+    lagasu_parameters = np.array([id_substructures, ra_substructures, dec_substructures, redshift_substructures, gmm_substructures, labels_dbscan_corr, id_final], dtype=object)
 
     #-- returning output quantity
     return lagasu_parameters
@@ -311,14 +359,14 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
 
-
-def lagasu_dbscan(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, galaxy_separation, n_galaxies):
+def lagasu_dbscan(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, galaxy_separation, n_galaxies, ra_cluster, dec_cluster, r200, flag):
 
     """ LAGASU_DBSCAN is a function that assigns galaxies to 
     different susbtructures in and around a galaxy cluster
     only using DBSCAN implementation
 
-    This function was developed by D. Olave-Rojas (20/08/2021)
+    This function was developed by D. E. Olave-Rojas (20/08/2021)
+    and was updated by D. E. Olave-Rojas (22/05/2023)
 
     The input of LAGASU can be a sample of galaxies in a cluster 
     of a sample of galaxies previously selected as potential 
@@ -340,17 +388,50 @@ def lagasu_dbscan(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, galaxy_sepa
         galaxies in a substructure the units must be the 
         same as the ra_galaxy and dec_galaxy
     :param n_galaxies: minimum number of galaxies to define a group
+    :param ra_cluster: central Right Ascention (R.A.)
+        of the cluster 
+    :param dec_cluster: central Declination (Dec.)
+        of the cluster 
+    :param r200: is the typical radius of a sphere 
+        with a mean density equal to 200 times the 
+        critical density. This parameter must be
+        in degrees
+    :param flag:  parameter that allows the user to 
+        choose between photometric of spectroscopic 
+        sample. If flag == 'zphot' the input must be
+        photometric sample. If flag == 'zspec" the 
+        input must be spectroscopic sample 
 
     :type ra_galaxy: array
     :type dec_galaxy: array
 	:type redshift_galaxy: array
     :type galaxy_separation: int, float 
     :type n_galaxies: int, float
+    :type ra_cluster: float
+    :type dec_cluster: float
+    :type r200: float
+    :type flag: string
 
 	:returns: label to each galaxy,
-        which corresponds to a number 
-        of substructure or noise
+        which corresponds to identify
+        each substructure
 	:rtype: array
+   
+    .. note::
+    
+    LAGASU will give us three labels as output: 
+    i) lagasu[4] that corresponds to the label 
+    putting by DBSCAN and varies between -1 to N, 
+    where -1 corresponds to noise and galaxies 
+    within a substructure have a label between 
+    0 to N, and iii) lagasu[5] that corresponds 
+    to the corrected label considering galaxies in
+    substructures and in the principal halo. Galaxies
+    in substructures are a label between 0 to N. 
+    Whereas, galaxies in the principal halo have
+    a label equal to -1. For details about this
+    correction see the help of the function
+    "rename_substructures" in utils module.
 
 	"""
     print("-- starting LAGASU_DBSCAN --")
@@ -376,17 +457,19 @@ def lagasu_dbscan(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, galaxy_sepa
     label_dbscan_bic = db.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
 
     #-- printing the labels of the galaxies as the output in the DBSCAN implementation
-    print("label dbscan: ", label_dbscan_bic) # if label == -1 the galaxy is noise. If galaxy is != -1 the galaxy is in a substructure
+#    print("label dbscan: ", label_dbscan_bic) # if label == -1 the galaxy is noise. If galaxy is != -1 the galaxy is in a substructure
 
     id_substructures = id_galaxy
     ra_substructures = ra_galaxy
     dec_substructures = dec_galaxy
-    zspec_substructures = redshift_galaxy
+    redshift_substructures = redshift_galaxy
     label_substructures = label_dbscan_bic
 
+    # -- renaming the substructures identified by using lagasu in order to identify the principal halo and separate it from the substructures
+    id_final = utils.rename_substructures(ra_substructures, dec_substructures, redshift_substructures, label_substructures, ra_cluster, dec_cluster, r200, flag)
 
     #-- building matrix with output quantities
-    lagasu_parameters = np.array([id_substructures, ra_substructures, dec_substructures, zspec_substructures, label_substructures], dtype=object)
+    lagasu_parameters = np.array([id_substructures, ra_substructures, dec_substructures, redshift_substructures, label_substructures, id_final], dtype=object)
 
     #-- returning output quantity
     return lagasu_parameters
