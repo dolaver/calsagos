@@ -13,7 +13,7 @@ from astropy import constants as const
 
 __author__ = 'D. Olave-Rojas & P. Cerulo'
 __email__ = 'daniela.olave@utalca.cl - pcerulo@inf.udec.cl'
-VERSION = '0.1'
+VERSION = '0.1.2'
 
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
@@ -183,14 +183,14 @@ def convert_kpc_to_angular_distance(distance_in_kpc, redshift, input_H, input_Om
     :param intput_Omega_m: Omega matter
 	:param flag: The units to convert the distance_in_kpc
 
-	:type distance_in_kpc: int, array, float
-	:type redshift: int, float
-	:type input_H: int, float
-    :type intput_Omega_m: int, float
-    :type flag: string ("degrees", "arcminutes" or "arcseconds")
+	:type distance_in_kpc   : int, array, float
+	:type redshift          : int, float
+	:type input_H           : int, float
+    :type intput_Omega_m    : int, float
+    :type flag              : string ("degrees", "arcminutes" or "arcseconds")
 
 	:returns: The converted distance in angula units
-	:rtype: int, float, array
+	:rtype  : int, float, array
 
 	:Example:
     >>> from calsagos import utils
@@ -256,10 +256,10 @@ def calc_radius_finn(mass, redshift, input_H0, input_Omega_L, input_Omega_m, fla
     :param flag: The units of the output radius
 
 
-	:type mass: float
-	:type redshift: int, float
-	:type input_H: int, float
-    :type input_Omega_L: int, float
+	:type mass          : float
+	:type redshift      : int, float
+	:type input_H       : int, float
+    :type input_Omega_L : int, float
     :type intput_Omega_m: int, float
 
 	:returns: the r200 of the cluster in meters
@@ -342,11 +342,11 @@ def calc_angular_distance(RA, DEC, RA_cen, DEC_cen, unit_flag):
     :param unit_flag: set the units for
         the angular distance (deg, arcmin or arsec)
 
-	:type RA: float, array
-	:type DEC: float, array
-    :type RA_cen: float
-    :type DEC_cen: float
-    :type unit_flag: string
+	:type RA        : float, array
+	:type DEC       : float, array
+    :type RA_cen    : float
+    :type DEC_cen   : float
+    :type unit_flag : string
 
 	:returns: angular distance from a fixed position
 	:rtype: array
@@ -367,7 +367,6 @@ def calc_angular_distance(RA, DEC, RA_cen, DEC_cen, unit_flag):
     dim = RA.size
     angular_distance = np.zeros(dim)
 
-
     # -- calculating angular distance in decimal degrees
     for ii in range(dim):
 
@@ -378,7 +377,6 @@ def calc_angular_distance(RA, DEC, RA_cen, DEC_cen, unit_flag):
         elif RA[ii] >= 0.0 and RA[ii] <= 360.0 and RA_cen >= 0.0 and RA_cen <= 360.0 and DEC[ii] >= -90.0 and DEC[ii] <= 90.0 and DEC_cen >= -90.0 and DEC_cen <= 90.0:
 
             angular_distance[ii] = math.sqrt( (RA[ii]-RA_cen)**2 + (DEC[ii]-DEC_cen)**2  )
-
 
     # -- selecting units of output
     if unit_flag == "degrees":
@@ -416,9 +414,9 @@ def calc_knn_galaxy_distance(RA, DEC, knn):
         in degree units
     :param knn: k nearest neighbors
 
-    :type RA: array
-    :type DEC: array
-    :type knn: int
+    :type RA    : array
+    :type DEC   : array
+    :type knn   : int
 
 	:returns: the distance between one galaxy
         and its K.Nearest Neighbors and the
@@ -760,15 +758,16 @@ def estimate_central_coordinates_substructures(ra, dec, redshift, label):
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
 
-def rename_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy, ra_cluster, dec_cluster, r200, flag): 
+def rename_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy, ra_cluster, dec_cluster, redshift_cluster, r200, flag): 
 
-    """ calsagos.utils.rename_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy, ra_cluster, dec_cluster, r200)
+    """ calsagos.utils.rename_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy, ra_cluster, dec_cluster, redshift_cluster, r200, flag)
 
     Function that renames the substructures depending 
     of the type of the sample
 
-    This funcion was develop by D. Olave-Rojas
-    (02/06/2022)
+    This funcion was develop by D. E. Olave-Rojas
+    (02/06/2022) and was updated by D. E. Olave-Rojas 
+    (02/06/2023)
 
 	:param ra_galaxy: Right Ascention (R.A.) of each 
         galaxy in the catalogue with substructures
@@ -782,6 +781,8 @@ def rename_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy, ra_c
         of the cluster 
     :param dec_cluster: central Declination (Dec.)
         of the cluster 
+    :param redshift_cluster: central redshift of the 
+        cluster
     :param r200: is the typical radius of a sphere 
         with a mean density equal to 200 times the 
         critical density. This parameter must be
@@ -792,21 +793,17 @@ def rename_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy, ra_c
         photometric sample. If flag == 'zspec" the 
         input must be spectroscopic sample 
 
-    :type ra_galaxy: array
-    :type dec_galaxy: array
-    :type redshift_galaxy: array
-    :type id_galaxy: array
-    :type ra_cluster: float
-    :type dec_cluster: float
-    :type r200: float
-    :type flag: string
+    :type ra_galaxy         : array
+    :type dec_galaxy        : array
+    :type redshift_galaxy   : array
+    :type id_galaxy         : array
+    :type ra_cluster        : float
+    :type dec_cluster       : float
+    :type redshift_cluster  : float
+    :type r200              : float
+    :type flag              : string
 
-	:param flag:
-	
-    :type value_array: array
-	:type flag: string
-
-	:returns: array with the new label of substructures
+    :returns: array with the new label of substructures
 	:rtype: array
 
     .. note::
@@ -829,40 +826,74 @@ def rename_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy, ra_c
     label_central_substructure = central_substructure_values[0]
     ra_central_substructure = central_substructure_values[1]
     dec_central_substructure = central_substructure_values[2]
+    redshift_central_substructure = central_substructure_values[3]
+    n_members_substructure = central_substructure_values[4]
 
-
+    # -- estimating the distance of each substructure from the central position of the principal halo
+    angular_distance_to_center_substructure = calc_angular_distance(ra_central_substructure, dec_central_substructure, ra_cluster, dec_cluster, "degrees")
+       
+    # -- estimating the distance between the redshift of each substructure from the central redshift of the principal halo
+    redshift_distance_to_center_substructure = abs(redshift_central_substructure  - redshift_cluster)
+    
+    # -- estimating the combined distance of redshift and position
     # -- defining output quantities
     dim_substructures = len(label_central_substructure)
+    delta_sqrt = np.zeros(dim_substructures)
+    
+    if label_central_substructure.size == 1:
+        delta_sqrt = np.sqrt(angular_distance_to_center_substructure**2. + redshift_distance_to_center_substructure**2.)
+    else:
+        for ii in range(0, dim_substructures): 
+            delta_sqrt[ii] = np.sqrt(angular_distance_to_center_substructure[ii]**2. + redshift_distance_to_center_substructure[ii]**2.)
+
+    delta = delta_sqrt
+    
+    # -- defining output quantities
     new_label = np.zeros(dim_substructures) # new_label is the array with the id of substructures that must be treat as part of the principal halo
 
     if label_central_substructure.size == 1:
         dim_sample = id_galaxy.size
-        new_id = np.zeros(dim_sample) #new_id is the final id for each galaxy in each substructure
+        new_id = np.zeros(dim_sample) # new_id is the final id for each galaxy in each substructure
         for ii in range(0, dim_sample):
             new_id[ii] = -1
     else:
-        # -- estimating the distance of each substructure from the central position of the principal halo
-        distance_to_center_substructure = calc_angular_distance(ra_central_substructure, dec_central_substructure, ra_cluster, dec_cluster, "degrees")
 
         # -- establishing the criteria to assign galaxies to the principal halo
         # Galaxies on the principal halo have an id = -1
+
         if flag == "zphot":
             # all substructures within r200 are considered as part of the principal halo.
             for ii in range(0, dim_substructures):
-                if distance_to_center_substructure[ii] < r200:
+                if angular_distance_to_center_substructure[ii] < r200:
+                    new_label[ii] = -1
+
+        		# in the case that there are not substructures within r200 of the cluster the nearest substructure to the center of the cluster is considered as the principal halo.
+                elif angular_distance_to_center_substructure[ii] == min(angular_distance_to_center_substructure) and (redshift_distance_to_center_substructure[ii] == min(abs(redshift_distance_to_center_substructure))) and (n_members_substructure[ii] == max(n_members_substructure)):
+                    new_label[ii] = -1
+
+        		# in the case that there are not substructures with min(angular_distance) and min(redshift_distance) the nearest substructure to the center of the cluster, using delta, is considered as the principal halo.
+                elif (delta[ii] == min(delta)) and (n_members_substructure[ii] == max(n_members_substructure)):
                     new_label[ii] = -1
                 
-		# in the case that there are not substructures within r200 of the cluster the nearest substructure to the center of the cluster is considered as the principal halo.
-		elif distance_to_center_substructure[ii] == min(distance_to_center_substructure):
+                elif (n_members_substructure[ii] == max(n_members_substructure)):
                     new_label[ii] = -1
-		
+
                 else:
                     new_label[ii] = label_central_substructure[ii]
 
         if flag == "zspec":
-            # the nearest substructure to the center of the cluster is considered as the principal halo.
+            
             for ii in range(0, dim_substructures):
-                if distance_to_center_substructure[ii] == min(distance_to_center_substructure):
+                # The substructure closest to the center of the cluster and with the most members is considered the main halo.
+                if (angular_distance_to_center_substructure[ii] == min(angular_distance_to_center_substructure)) and (redshift_distance_to_center_substructure[ii] == min(abs(redshift_distance_to_center_substructure))) and (n_members_substructure[ii] == max(n_members_substructure)):
+                    new_label[ii] = -1
+                
+                # The substructure closest to the center of the cluster, using delta. and with the most members is considered the main halo.
+                elif (delta[ii] == min(delta)) and (n_members_substructure[ii] == max(n_members_substructure)):
+                    new_label[ii] = -1
+
+                # # In the case where the substructure closest to the center of the group is not the one with the largest number of members, the substructure with the largest number of members is considered the main halo.
+                elif (n_members_substructure[ii] == max(n_members_substructure)):
                     new_label[ii] = -1
 
                 else:
@@ -919,8 +950,7 @@ def rename_substructures(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy, ra_c
                 if new_label[ii] == -1:
                     p2 = -1
                 if new_label[ii] == 0:
-                    p2 = 0
-                
+                    p2 = 0     
         # -- END OF LOOP --
 
         # -- defining output quantities
