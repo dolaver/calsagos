@@ -14,8 +14,8 @@ python3 setup.py install
 
 ## Updates
 
-LAGASU module and test.py were updated by D. E. Olave-Rojas on May 22, 2023 to include the correction of the label of substructures directly in this function
-UTILS, LAGASU and test.py were updated by D. E. Olave-Rojas on June 02, 2023 to improve the correction of the label of substructures
+- LAGASU module and test.py were updated by D. E. Olave-Rojas on May 22, 2023 to include the correction of the label of substructures directly in this function
+- UTILS, LAGASU and test.py were updated by D. E. Olave-Rojas on June 02, 2023 to improve the correction of the label of substructures
 
 ## Example Usage
 
