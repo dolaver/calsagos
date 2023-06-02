@@ -15,6 +15,7 @@ python3 setup.py install
 ## Updates
 
 LAGASU module and test.py were updated by D. E. Olave-Rojas on May 22, 2023 to include the correction of the label of substructures directly in this function
+UTILS, LAGASU and test.py were updated by D. E. Olave-Rojas on June 02, 2023 to improve the correction of the label of substructures
 
 ## Example Usage
 
@@ -31,6 +32,7 @@ id_member = cluster_members[0]
 ra_member = cluster_members[1]
 dec_member = cluster_members[2]
 redshift_member = cluster_members[3]
+cluster_redshift = cluster_members[4]
 
 #-- estimating the galaxy separation of galaxies in the cluster sample to be used as input in lagasu
 knn_distance = utils.calc_knn_galaxy_distance(ra_member, dec_member, n_galaxies)
@@ -41,7 +43,7 @@ knn_galaxy_distance = knn_distance[0]
 typical_separation = utils.best_eps_dbscan(id_member, knn_galaxy_distance)
 
 #-- Assign galaxies to each substructures
-label_candidates = lagasu.lagasu(id_member, ra_member, dec_member, redshift_member, range_cuts, typical_separation, n_galaxies, ra_cluster, dec_cluster, r200, flag)
+label_candidates = lagasu.lagasu(id_member, ra_member, dec_member, redshift_member, range_cuts, typical_separation, n_galaxies, ra_cluster, dec_cluster, cluster_redshift, r200, flag)
 
 #-- defining output parameters from lagasu
 id_candidates = label_candidates[0] #-- id of reach galaxy in the catalog with cluster members
