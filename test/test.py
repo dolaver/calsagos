@@ -45,6 +45,7 @@ def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cl
     ra_member = cluster_members[1]
     dec_member = cluster_members[2]
     redshift_member = cluster_members[3]
+    cluster_redshift = cluster_members[4]
 
     #-- estimating the galaxy separation of galaxies in the cluster sample to be used as input in lagasu
     knn_distance = utils.calc_knn_galaxy_distance(ra_member, dec_member, n_galaxies)
@@ -54,14 +55,16 @@ def test_calsagos_clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cl
     typical_separation = utils.best_eps_dbscan(id_member, knn_galaxy_distance)
 
     #-- Assign galaxies to each substructures
-    label_candidates = lagasu.lagasu(id_member, ra_member, dec_member, redshift_member, range_cuts, typical_separation, n_galaxies, ra_cluster, dec_cluster, r200_degree, flag)
+    label_candidates = lagasu.lagasu(id_member, ra_member, dec_member, redshift_member, range_cuts, typical_separation, n_galaxies, ra_cluster, dec_cluster, cluster_redshift, r200_degree, flag)
 
     #-- defining output parameters from lagasu
-    id_candidates = label_candidates[0]
-    ra_candidates = label_candidates[1]
-    dec_candidates = label_candidates[2]
-    redshift_candidates = label_candidates[3]
-    label_final = label_candidates[6]
+    id_candidates = label_candidates[0] #-- id of reach galaxy in the catalog with cluster members
+    ra_candidates = label_candidates[1] #-- R.A. of each galaxy in the catalog with cluster members
+    dec_candidates = label_candidates[2] #-- Dec. of each galaxy in the catalog with cluster members
+    redshift_candidates = label_candidates[3] #-- redshift of each galaxy in the catalog with cluster members
+    label_zcut = label_candidates[4] #-- label of each galaxy in the catalog with cluster members. This parameter is given by GMM 
+    label_dbscan = label_candidates[5] #-- label of each galaxy in the catalog with cluster members. This parameter is given by DBSCAN
+    label_final = label_candidates[6] #-- label of each galaxy in the catalog with cluster members. Equal to -1 if the galaxy is part of the principal halo and has a value between 0 to N if th galaxy is part of a substructure 
 
     #-- defining the number of galaxies in the cluster to print a table with output results
     n_members = id_member.size
