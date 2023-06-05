@@ -323,13 +323,11 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
 
         n_redshift_groups = np.where(labels_bic == ii)[0]
 
-        #print len(groups) 
         id_gal_out = id_galaxy[n_redshift_groups]
         ra_out = ra_galaxy[n_redshift_groups]
         dec_out = dec_galaxy[n_redshift_groups]
         redshift_gal_out = redshift_galaxy[n_redshift_groups]
         gmm_labels = labels_bic[n_redshift_groups]
-
 
         if ii != 0:
             id_substructures = np.append(id_substructures,id_gal_out)
@@ -347,6 +345,7 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
 
 
     # -- renaming the substructures identified by using lagasu in order to identify the principal halo and separate it from the substructures
+    # if label == -1 the galaxy is only part of the principal halo. If galaxy is != -1 the galaxy is in a substructure
     id_final = utils.rename_substructures(ra_substructures, dec_substructures, redshift_substructures, labels_dbscan_corr, ra_cluster, dec_cluster, redshift_cluster, r200, flag)
 
     #-- building matrix with output quantities
@@ -358,7 +357,7 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
 
-def lagasu_dbscan(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, galaxy_separation, n_galaxies, ra_cluster, dec_cluster, r200, flag):
+def lagasu_dbscan(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, galaxy_separation, n_galaxies, ra_cluster, dec_cluster, redshift_cluster, r200, flag):
 
     """ LAGASU_DBSCAN is a function that assigns galaxies to 
     different susbtructures in and around a galaxy cluster
@@ -391,6 +390,8 @@ def lagasu_dbscan(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, galaxy_sepa
         of the cluster 
     :param dec_cluster: central Declination (Dec.)
         of the cluster 
+    :param redshift_cluster: central redshift of the 
+        cluster
     :param r200: is the typical radius of a sphere 
         with a mean density equal to 200 times the 
         critical density. This parameter must be
@@ -401,15 +402,16 @@ def lagasu_dbscan(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, galaxy_sepa
         photometric sample. If flag == 'zspec" the 
         input must be spectroscopic sample 
 
-    :type ra_galaxy: array
-    :type dec_galaxy: array
-	:type redshift_galaxy: array
-    :type galaxy_separation: int, float 
-    :type n_galaxies: int, float
-    :type ra_cluster: float
-    :type dec_cluster: float
-    :type r200: float
-    :type flag: string
+    :type ra_galaxy         : array
+    :type dec_galaxy        : array
+	:type redshift_galaxy   : array
+    :type galaxy_separation : int, float 
+    :type n_galaxies        : int, float
+    :type ra_cluster        : float
+    :type dec_cluster       : float
+    :type redshift_cluster  : float
+    :type r200              : float
+    :type flag              : string
 
 	:returns: label to each galaxy,
         which corresponds to identify
@@ -455,9 +457,6 @@ def lagasu_dbscan(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, galaxy_sepa
     #-- putting a label to each galaxy. This label allows us to assign each galaxy to a substructure
     label_dbscan_bic = db.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
 
-    #-- printing the labels of the galaxies as the output in the DBSCAN implementation
-#    print("label dbscan: ", label_dbscan_bic) # if label == -1 the galaxy is noise. If galaxy is != -1 the galaxy is in a substructure
-
     id_substructures = id_galaxy
     ra_substructures = ra_galaxy
     dec_substructures = dec_galaxy
@@ -465,7 +464,8 @@ def lagasu_dbscan(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, galaxy_sepa
     label_substructures = label_dbscan_bic
 
     # -- renaming the substructures identified by using lagasu in order to identify the principal halo and separate it from the substructures
-    id_final = utils.rename_substructures(ra_substructures, dec_substructures, redshift_substructures, label_substructures, ra_cluster, dec_cluster, r200, flag)
+    # if label == -1 the galaxy is only part of the principal halo. If galaxy is != -1 the galaxy is in a substructure
+    id_final = utils.rename_substructures(ra_substructures, dec_substructures, redshift_substructures, label_substructures, ra_cluster, dec_cluster, redshift_cluster, r200, flag)
 
     #-- building matrix with output quantities
     lagasu_parameters = np.array([id_substructures, ra_substructures, dec_substructures, redshift_substructures, label_substructures, id_final], dtype=object)
