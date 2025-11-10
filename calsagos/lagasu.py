@@ -18,19 +18,19 @@ from calsagos import utils
 
 __author__ = 'daniela.olave@utalca.cl (Daniela Olave-Rojas)'
 
-VERSION = '0.1.3' 
+VERSION = '0.1.4' 
 
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
 
-def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy_separation, n_galaxies, ra_cluster, dec_cluster, redshift_cluster, r200, flag):
+def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy_separation, n_galaxies, metric_distance, method, ra_cluster, dec_cluster, redshift_cluster, r200, flag):
 
     """ LAGASU is a function that assigns galaxies to different 
     susbtructures in and around a galaxy cluster
 
     This function was developed by D. E. Olave-Rojas and 
-    D. A. Olave-Rojas (05/07/2021) and was updated by 
-    D. E. Olave-Rojas (02/06/2023)
+    D. A. Olave-Rojas (07/05/2021) and was updated by 
+    D. E. Olave-Rojas (06/17/2024)
 
     The input of LAGASU can be a sample of galaxies in a cluster 
     of a sample of galaxies previously selected as potential 
@@ -40,8 +40,8 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
     (Dressler & Schectman 1988) 
 
     lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, 
-    range_cuts, galaxy_separation, n_galaxies, ra_cluster, 
-    dec_cluster, r200, flag)
+    range_cuts, galaxy_separation, n_galaxies, metric_distance, 
+    method, ra_cluster, dec_cluster, r200, flag)
 
 	:param ra_galaxy: is the Right Ascension of each galaxy in
         the sample. This parameter must be in degree units
@@ -59,6 +59,11 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
         galaxies in a substructure the units must be the 
         same as the ra_galaxy and dec_galaxy
     :param n_galaxies: minimum number of galaxies to define a group
+    :param metric_distance: metric used to calcule the distance 
+        between instances in a feature array. Metric must be 
+        'euclidean' or 'haversine'
+    :param method: clustering algorithm used to grouping galaxies
+        in substructures. Method must be 'dbscan' or 'hdbscan'
     :param ra_cluster: central Right Ascention (R.A.)
         of the cluster 
     :param dec_cluster: central Declination (Dec.)
@@ -81,6 +86,8 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
     :type range_cuts        : int
     :type galaxy_separation : int, float 
     :type n_galaxies        : int, float
+    :type metric_distance   : string  
+    :type method            : string  
     :type ra_cluster        : float
     :type dec_cluster       : float
     :type redshift_cluster  : float
@@ -112,6 +119,10 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
 
 	"""
     print("-- starting LAGASU --")
+    print("--- input parameters ---")
+    print("Number of members    :", n_galaxies)
+    print("metric               :", metric_distance)
+    print("method               :", method)
 
     #-- Gaussian Mixture Models (GMM) divides the sample in ranges of redshift in order to consider the volume of the cluster
     #-- The divissión is perform without an arbitrary number of cuts in the redshift distribution and the number of cuts are in a range
@@ -130,7 +141,7 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
     
     #-- defining the number of possible cuts in the redshift space
     n_components_range = range(1, range_cuts)
-    
+
     #-- defining a list with the types of covariances used in the implementation of GMM-BIC
     cv_types = ['spherical', 'tied', 'diag', 'full']
     
@@ -158,14 +169,15 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
     # -- END OF LOOP --
     bic = np.array(bic)
     clf = best_gmm
+    print("Best model GMM       :", best_gmm)
 #    bars = []
     
     #-- defining the parameters of the best fit
     n_cuts_bic = clf.n_components # number of cuts do by the algorithms 
-
+    print("Number of GMM cuts  :", n_cuts_bic)
     #-- putting a label to each galaxy. This label allows us to separe and assign each galaxy to a redshift cut
     labels_bic = clf.predict(candidate_galaxies) # using this label we can separate galaxies into n groups that correspond to redshifts cuts
-
+    
     #-- To assign galaxies to different substructures we use Density-Based Spatial Clustering of Applications with Noise (DBSCAN, Ester et al. 1996)
     #-- To identify groups using DBSCAN we must define a minimum number of neighbouring objects separated by a specific distance. 
     #-- DBSCAN does not assign all objects in the sample to one group (Ester et al. 1996) and we can remove the galaxies that are not spatially grouped with others
@@ -182,33 +194,48 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
         #-- selecting galaxies that are part of a signle cut in redshift
         ra = ra_galaxy[n_redshift_groups]
         dec = dec_galaxy[n_redshift_groups]
+        id = id_galaxy[n_redshift_groups]
 
         #-- generate sample data
-        #-- creating a transposed array with the poition of galaxies to be used as input in the DBSCAM implementation
-        X = np.array([ra, dec]).T
+        #-- creating a transposed array with the poition of galaxies to be used as input in the DBSCAN implementation
+        #-- metric implementation was added an June 17, 2024
+
+#        X = np.array([ra, dec]).T
+        if metric_distance == 'euclidean':
+            X = np.array([ra, dec]).T
+        if metric_distance == 'haversine': 
+            ra_rad = np.radians(ra)
+            dec_rad = np.radians(dec)
+            X = np.array([ra_rad, dec_rad]).T
+
+        #-- Performing the clustering algothims DBSCAN or HDBSCAN
+        if method == 'dbscan':
+            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
+        elif method == 'hdbscan':
+            cluster = HDBSCAN(min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)   
 
         #-- Performing the DBSCAN
-        db = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies).fit(X)
-        core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-        core_samples_mask[db.core_sample_indices_] = True
+    #    cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
+    #    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+    #    core_samples_mask[db.core_sample_indices_] = True
      
         #-- putting a label to each galaxy. This label allows us to assign each galaxy to a substructure
-        label_dbscan_bic = db.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
+        label_cluster_bic = cluster.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
 
         #-- selecting the labels of the groups found by DBSCAN in each redshift cut
-        groups = np.unique(label_dbscan_bic) # number of groups in each redshift cut
+        groups = np.unique(label_cluster_bic) # number of groups in each redshift cut
 
         if ii != 0:
             p = np.append(p,groups, axis=0)
             tam_groups = np.append(tam_groups, len(groups))
-            labels_dbscan_bic = np.append(labels_dbscan_bic,label_dbscan_bic)
+            labels_dbscan_bic = np.append(labels_dbscan_bic,label_cluster_bic)
             first_element_groups = np.append(first_element_groups, groups[0])
 
         #-- process of the first iteration: defining variables
         else:                
             p = groups # array with the unique labels that could be assign to a single galaxy
             tam_groups = len(groups) # size of the each idenfied substructure
-            labels_dbscan_bic = label_dbscan_bic # label used to identified each substructure
+            labels_dbscan_bic = label_cluster_bic # label used to identified each substructure
             first_element_groups = groups[0] # first element in the array with the labels of the substructures
         
     #-- Finally, we need to label the substructures from 0 to n
@@ -343,13 +370,13 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
             redshift_substructures = redshift_gal_out
             gmm_substructures = gmm_labels
 
-
     # -- renaming the substructures identified by using lagasu in order to identify the principal halo and separate it from the substructures
     # if label == -1 the galaxy is only part of the principal halo. If galaxy is != -1 the galaxy is in a substructure
     id_final = utils.rename_substructures(ra_substructures, dec_substructures, redshift_substructures, labels_dbscan_corr, ra_cluster, dec_cluster, redshift_cluster, r200, flag)
-
     #-- building matrix with output quantities
     lagasu_parameters = np.array([id_substructures, ra_substructures, dec_substructures, redshift_substructures, gmm_substructures, labels_dbscan_corr, id_final], dtype=object)
+
+    print("-- ending LAGASU --")
 
     #-- returning output quantity
     return lagasu_parameters
