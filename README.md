@@ -16,6 +16,7 @@ python3 setup.py install
 
 - LAGASU module and test.py were updated by D. E. Olave-Rojas on May 22, 2023 to include the correction of the label of substructures directly in this function
 - UTILS, LAGASU and test.py were updated by D. E. Olave-Rojas on June 02, 2023 to improve the correction of the label of substructures
+- LAGASU was updated by D. E. Olave-Rojas on November 10, 2025 to include metrics "haversine" and "euclidean" and method "dbscan" and "hdbscan"
 
 ## Example Usage
 
@@ -23,6 +24,7 @@ python3 setup.py install
 from calsagos import lagasu
 from calsagos import utils
 from calsagos import clumberi
+from sklearn.neighbors import NearestNeighbors
 
 #-- select cluster members
 cluster_members = clumberi.clumberi(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, cluster_initial_redshift, ra_cluster, dec_cluster, range_cuts)
@@ -43,7 +45,7 @@ knn_galaxy_distance = knn_distance[0]
 typical_separation = utils.best_eps_dbscan(id_member, knn_galaxy_distance)
 
 #-- Assign galaxies to each substructures
-label_candidates = lagasu.lagasu(id_member, ra_member, dec_member, redshift_member, range_cuts, typical_separation, n_galaxies, ra_cluster, dec_cluster, cluster_redshift, r200, flag)
+label_candidates = lagasu.lagasu(id_member, ra_member, dec_member, redshift_member, range_cuts, typical_separation, n_galaxies, metric_distance, 'dbscan', ra_cluster, dec_cluster, cluster_redshift, r200, flag)
 
 #-- defining output parameters from lagasu
 id_candidates = label_candidates[0] #-- id of reach galaxy in the catalog with cluster members
