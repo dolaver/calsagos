@@ -203,7 +203,6 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
     bic = np.array(bic)
     clf = best_gmm
     print("Best model GMM       :", best_gmm)
-#    bars = []
     
     #-- defining the parameters of the best fit
     n_cuts_bic = clf.n_components # number of cuts do by the algorithms 
@@ -233,7 +232,6 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
         #-- creating a transposed array with the poition of galaxies to be used as input in the DBSCAN implementation
         #-- metric implementation was added an June 17, 2024
 
-#        X = np.array([ra, dec]).T
         if metric_distance == 'euclidean':
             X = np.array([ra, dec]).T
         if metric_distance == 'haversine': 
@@ -246,11 +244,6 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
             cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
         elif method == 'hdbscan':
             cluster = HDBSCAN(min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)   
-
-        #-- Performing the DBSCAN
-    #    cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-    #    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-    #    core_samples_mask[db.core_sample_indices_] = True
      
         #-- putting a label to each galaxy. This label allows us to assign each galaxy to a substructure
         label_cluster_bic = cluster.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
@@ -317,9 +310,6 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
 
         p3[l] = l
     # -- END OF LOOP --
-
-    #-- printing the total number of substructures in the cluster
-#    print("number of substructures =", len(p3))
 
     #-- initializing the variables
     p_pos = 0
