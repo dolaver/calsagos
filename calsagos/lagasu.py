@@ -927,7 +927,8 @@ def lagasu_stability(ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, nsim, g
         print(f"Group {label} : {stability:.4f}")
 
     # --------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+	
+	print(" ")
     print("-- ending LAGASU stability--")
 
     #-- returning output quantity
