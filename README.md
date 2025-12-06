@@ -16,7 +16,8 @@ python3 setup.py install
 
 - LAGASU module and test.py were updated by D. E. Olave-Rojas on May 22, 2023 to include the correction of the label of substructures directly in this function
 - UTILS, LAGASU and test.py were updated by D. E. Olave-Rojas on June 02, 2023 to improve the correction of the label of substructures
-- UTILS, LAGASU and test.py waere updated by D. E. Olave-Rojas on November 10, 2025 to include metrics "haversine" and "euclidean" and method "dbscan" and "hdbscan"
+- UTILS and LAGASU and were updated by D. E. Olave-Rojas on November 10, 2025 to include metrics "haversine" and "euclidean" and method "dbscan" and "hdbscan"
+- UTILS and LAGASU were updated by D. E. Olave-Rojas on December 05, 2025 to include a stability test in the identification of substructures using lagasu
 
 ## Example Usage
 
@@ -35,11 +36,14 @@ dec_member = cluster_members[2]
 redshift_member = cluster_members[3]
 cluster_redshift = cluster_members[4]
 
+cluster_sample = np.array([ra_member, dec_member]).T
+
 #-- estimating the galaxy separation of galaxies in the cluster sample to be used as input in lagasu
-knn_distance = utils.calc_knn_galaxy_distance(ra_member, dec_member, n_galaxies)
+neigh = NearestNeighbors(n_neighbors=(n_galaxies+1), metric=metric_distance, algorithm='ball_tree').fit(cluster_sample)
+distances, indices = neigh.kneighbors(cluster_sample_r200)
 
 #-- determining the distance to the k-nearest neighbor of each galaxy in the cluster
-knn_galaxy_distance = knn_distance[0]
+knn_distance = distances[:,n_galaxies]
 
 typical_separation = utils.best_eps_dbscan(id_member, knn_galaxy_distance)
 
