@@ -40,7 +40,7 @@ cluster_sample = np.array([ra_member, dec_member]).T
 
 #-- estimating the galaxy separation of galaxies in the cluster sample to be used as input in lagasu
 neigh = NearestNeighbors(n_neighbors=(n_galaxies+1), metric=metric_distance, algorithm='ball_tree').fit(cluster_sample)
-distances, indices = neigh.kneighbors(cluster_sample_r200)
+distances, indices = neigh.kneighbors(cluster_sample)
 
 #-- determining the distance to the k-nearest neighbor of each galaxy in the cluster
 knn_distance = distances[:,n_galaxies]
