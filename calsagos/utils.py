@@ -1490,12 +1490,13 @@ def remane_dif_substructures(ra_galaxy_r200, dec_galaxy_r200, id_galaxy_r200, ra
     
     distance_degree = calc_angular_distance(ra_galaxy, dec_galaxy, ra_cluster, dec_cluster, "degrees")
 
+    
     n_r200 = ntimes*r200_cluster
 
     # -- estimating central positions of substructures using distances within NR200
     unique_label_r200 = np.unique(id_galaxy_r200)
     dim_sample = len(id_galaxy_r200)
-
+    
     redshift_galaxy_r200 = np.zeros(dim_sample)
     redshift_galaxy = np.zeros(dim_sample)
 
@@ -1514,6 +1515,9 @@ def remane_dif_substructures(ra_galaxy_r200, dec_galaxy_r200, id_galaxy_r200, ra
 
     # -- estimating central positions of substructures using distances in whole sample
     unique_label_all = np.unique(id_galaxy)
+
+    print("id substructures considering typical distance within NR200                       :", unique_label_r200)
+    print("id substructures considering typical distance for all galaxies in the sample     :", unique_label_all)
 
     if unique_label_all.size == 1 and unique_label_all[0] == -1 :
             label_central_substructure_all = -1
@@ -1548,8 +1552,12 @@ def remane_dif_substructures(ra_galaxy_r200, dec_galaxy_r200, id_galaxy_r200, ra
     else:
         angular_distance_to_center_all = calc_angular_distance(ra_central_substructure_all, dec_central_substructure_all, ra_cluster, dec_cluster, "degrees")
 
-    print("id substructures within NR200          :", unique_label_r200)
-    print("id substructures all galaxies          :", unique_label_all)
+
+    #-- selecting substructures within NR200
+    within_nr200 = np.where((angular_distance_to_center_NR200 <= n_r200))[0]
+    outer_nr200 = np.where(angular_distance_to_center_all >= n_r200)[0]
+    print("id substructures within NR200    :", label_central_substructure_r200[within_nr200]) 
+    print("id substructures outer NR200     :", label_central_substructure_all[outer_nr200]) 
 
     # -- renombrar las subestructuras obtenidas con NR200- se dejan solo las que estan dentro de NR200
     dim = ra_galaxy.size
@@ -1587,13 +1595,11 @@ def remane_dif_substructures(ra_galaxy_r200, dec_galaxy_r200, id_galaxy_r200, ra
                         else:
                             provisional_label[ii] = -1
 
-    print("provisional label within ",ntimes,"x r200   :", np.unique(provisional_label))
+    #print("provisional label within ",ntimes,"x r200   :", np.unique(provisional_label))
 
     cut_R200 = np.where(distance_degree <= n_r200)[0]
     max_label_R200 = max(id_galaxy_r200[cut_R200])
-
     definitive_label = 50. + np.zeros(dim)
-
 
     if dim_sub_all == 1:
         for ii in range(dim):
@@ -1620,7 +1626,9 @@ def remane_dif_substructures(ra_galaxy_r200, dec_galaxy_r200, id_galaxy_r200, ra
                         definitive_label[ii] = label_central_substructure_all[kk]+(1.+max_label_R200)
 
     label = np.unique(definitive_label)
-    print("definitive id substructure             :", label)
+
+    print("-"*50)
+    print("provisional labels substructures       :", label)
     print("N substructures                        :", len(label)-1)
 
     label_final_good = np.zeros(dim)
@@ -1630,6 +1638,7 @@ def remane_dif_substructures(ra_galaxy_r200, dec_galaxy_r200, id_galaxy_r200, ra
     good_labels = label[good]
     correlative_labels = np.arange(dim_labels)
 
+    print("-"*50)
     print("id good substructures                  :", correlative_labels)
 
     for ii in range(dim):
@@ -1640,6 +1649,218 @@ def remane_dif_substructures(ra_galaxy_r200, dec_galaxy_r200, id_galaxy_r200, ra
                 label_final_good[ii] = correlative_labels[jj]
 
     return label_final_good
+
+#####################################################################################################################################################################################
+#####################################################################################################################################################################################
+
+def remane_dif_substructures_haversine(ra_galaxy_r200, dec_galaxy_r200, id_galaxy_r200, ra_galaxy, dec_galaxy, id_galaxy, ra_cluster, dec_cluster, r200_cluster, ntimes):
+
+    """ calsagos.utils.rename_dif_substructures(ra_galaxy_r200, dec_galaxy_r200, id_galaxy_r200, ra_galaxy, dec_galaxy, id_galaxy, ra_cluster, dec_cluster, r200_cluster, ntimes)
+
+    Function that renames the substructures idntifiying 
+    using a differentiated approach (i.e identify 
+    substructures within n*r_200 and outer n*r_200)
+    to avoid sobrestimate distances due to the low
+    density in the outer regions of the cluster.
+    
+    This funcion was develop by D. E. Olave-Rojas
+    (07/29/2025)
+
+	:param ra_galaxy: Right Ascention (R.A.) of each 
+        galaxy in the catalogue with substructures
+	:param dec_galaxy: Declination (Dec.) of each 
+        galaxy in the catalogue with substructures
+    :param id_galaxy: label to identify each 
+        substructure 
+    :param ra_cluster: central Right Ascention (R.A.)
+        of the cluster 
+    :param dec_cluster: central Declination (Dec.)
+        of the cluster 
+    :param r200: is the typical radius of a sphere 
+        with a mean density equal to 200 times the 
+        critical density. This parameter must be
+        in degrees
+
+    :type ra_galaxy         : array
+    :type dec_galaxy        : array
+    :type id_galaxy         : array
+    :type ra_cluster        : float
+    :type dec_cluster       : float
+    :type redshift_cluster  : float
+    :type r200              : float
+
+    :returns: array with the new label of substructures
+	:rtype: array
+
+    .. note::
+
+    All galaxies (and substructures) within r200 are 
+    considered as part of the principal halo. Galaxies 
+    on the principal halo have an id = -1
+
+	""" 
+    
+    distance_degree = calc_angular_distance(ra_galaxy, dec_galaxy, ra_cluster, dec_cluster, "degrees")
+
+    n_r200 = ntimes*r200_cluster
+
+    # -- estimating central positions of substructures using distances within NR200
+    unique_label_r200 = np.unique(id_galaxy_r200)
+    dim_sample = len(id_galaxy_r200)
+    
+    redshift_galaxy_r200 = np.zeros(dim_sample)
+    redshift_galaxy = np.zeros(dim_sample)
+
+    if unique_label_r200.size == 1 and unique_label_r200[0] == -1 :
+            label_central_substructure_r200 = np.array([-1])
+            ra_central_substructure_r200 = ra_cluster
+            dec_central_substructure_r200 = dec_cluster
+    else:
+            # -- estimating central position, central redshift and number of members of each substructures 
+            central_substructure_values = estimate_central_parameters(ra_galaxy_r200, dec_galaxy_r200, redshift_galaxy_r200, id_galaxy_r200)
+
+            # -- defining central parameters to each susbtructure
+            label_central_substructure_r200 = central_substructure_values[0]
+            ra_central_substructure_r200 = central_substructure_values[1]
+            dec_central_substructure_r200 = central_substructure_values[2]
+
+    # -- estimating central positions of substructures using distances in whole sample
+    unique_label_all = np.unique(id_galaxy)
+
+    print("id substructures considering typical distance within NR200                       :", unique_label_r200)
+    print("id substructures considering typical distance for all galaxies in the sample     :", unique_label_all)
+
+    if unique_label_all.size == 1 and unique_label_all[0] == -1 :
+            label_central_substructure_all = -1
+            ra_central_substructure_all = ra_cluster
+            dec_central_substructure_all = dec_cluster
+    else:
+            # -- estimating central position, central redshift and number of members of each substructures 
+            central_substructure_values = estimate_central_parameters(ra_galaxy, dec_galaxy, redshift_galaxy, id_galaxy)
+
+            # -- defining central parameters to each susbtructure
+            label_central_substructure_all = central_substructure_values[0]
+            ra_central_substructure_all = central_substructure_values[1]
+            dec_central_substructure_all = central_substructure_values[2]
+ 
+    # -- estimating angular distances of each substructures using distancer within NR200 from the centre of the cluster
+    if unique_label_r200.size == 1 and unique_label_r200[0] == -1:
+        angular_distance_NR200 = 0.
+        angular_distance_to_center_NR200 = np.array(angular_distance_NR200)
+    if unique_label_r200.size == 2 and unique_label_r200[1] == 0:
+        angular_distance_NR200 = math.sqrt( (ra_central_substructure_r200-ra_cluster)**2 + (dec_central_substructure_r200-dec_cluster)**2  )
+        angular_distance_to_center_NR200 = np.array(angular_distance_NR200)
+    else:
+        angular_distance_to_center_NR200 = calc_angular_distance(ra_central_substructure_r200, dec_central_substructure_r200, ra_cluster, dec_cluster, "degrees")
+
+    # -- estimating angular distances of each substructures using distances for whole sample from the centre of the cluster
+    if unique_label_all.size == 1 and unique_label_all[0] == -1:
+        angular_distance_all = 0.
+        angular_distance_to_center_all = np.array(angular_distance_all)
+    if unique_label_all.size == 2 and unique_label_all[1] == 0:
+        angular_distance_all = math.sqrt( (ra_central_substructure_all-ra_cluster)**2 + (dec_central_substructure_all-dec_cluster)**2  )
+        angular_distance_to_center_all = np.array(angular_distance_all)
+    else:
+        angular_distance_to_center_all = calc_angular_distance(ra_central_substructure_all, dec_central_substructure_all, ra_cluster, dec_cluster, "degrees")
+
+
+    #-- selecting substructures within NR200
+    within_nr200 = np.where((angular_distance_to_center_NR200 <= n_r200))[0]
+    outer_nr200 = np.where(angular_distance_to_center_all > n_r200)[0]
+    print("id substructures within NR200    :", label_central_substructure_r200[within_nr200]) 
+    print("id substructures outer NR200     :", label_central_substructure_all[outer_nr200]) 
+
+    # -- renombrar las subestructuras obtenidas con NR200- se dejan solo las que estan dentro de NR200
+    dim = ra_galaxy.size
+    dim_sub_NR200 = ra_central_substructure_r200.size
+    dim_sub_all = ra_central_substructure_all.size
+
+    provisional_label = np.zeros(dim)
+
+    if dim_sub_NR200 == 1:
+        for ii in range(dim):
+            if id_galaxy_r200[ii] == -1:
+                provisional_label[ii] = -1.
+
+            else:
+                if dim_sub_NR200 == 1 and id_galaxy_r200[ii] == -1:
+                    provisional_label[ii] = -1
+                if id_galaxy_r200[ii] == label_central_substructure_r200:
+                    if angular_distance_to_center_NR200 <= n_r200:
+                        provisional_label[ii] = label_central_substructure_r200
+                    else:
+                        provisional_label[ii] = -1
+
+    else:
+        for ii in range(dim):
+            if id_galaxy_r200[ii] == -1:
+                provisional_label[ii] = -1.
+    
+            else:
+                for jj in range(dim_sub_NR200):
+                    if dim_sub_NR200 == 1 and id_galaxy_r200[ii] == -1:
+                        provisional_label[ii] = -1
+                    if id_galaxy_r200[ii] == label_central_substructure_r200[jj]:
+                        if angular_distance_to_center_NR200[jj] <= n_r200:
+                            provisional_label[ii] = label_central_substructure_r200[jj]
+                        else:
+                            provisional_label[ii] = -1
+
+    #print("provisional label within ",ntimes,"x r200   :", np.unique(provisional_label))
+
+    cut_R200 = np.where(distance_degree <= n_r200)[0]
+    max_label_R200 = max(id_galaxy_r200[cut_R200])
+    definitive_label = 50. + np.zeros(dim)
+
+    if dim_sub_all == 1:
+        for ii in range(dim):
+            if id_galaxy[ii] == -1 and provisional_label[ii] == -1:
+                definitive_label[ii] = -1
+            elif id_galaxy[ii] == -1 and provisional_label[ii] != -1:
+                definitive_label[ii] = provisional_label[ii]
+            elif id_galaxy[ii] == label_central_substructure_all:
+                if angular_distance_to_center_all <= n_r200:
+                    definitive_label[ii] = provisional_label[ii]
+                else:
+                    definitive_label[ii] = label_central_substructure_all+(1.+max_label_R200)
+    else:
+        for ii in range(dim):
+            for kk in range(dim_sub_all):
+                if id_galaxy[ii] == -1 and provisional_label[ii] == -1:
+                    definitive_label[ii] = -1
+                elif id_galaxy[ii] == -1 and provisional_label[ii] != -1:
+                    definitive_label[ii] = provisional_label[ii]
+                elif id_galaxy[ii] == label_central_substructure_all[kk]:
+                    if angular_distance_to_center_all[kk] <= n_r200:
+                        definitive_label[ii] = provisional_label[ii]
+                    else:
+                        definitive_label[ii] = label_central_substructure_all[kk]+(1.+max_label_R200)
+
+    label = np.unique(definitive_label)
+
+    print("-"*50)
+    print("provisional labels substructures       :", label)
+    print("N substructures                        :", len(label)-1)
+
+    label_final_good = np.zeros(dim)
+    dim_labels = len(label)-1
+
+    good = np.where(label != -1)[0]
+    good_labels = label[good]
+    correlative_labels = np.arange(dim_labels)
+
+    print("-"*50)
+    print("id good substructures                  :", correlative_labels)
+
+    for ii in range(dim):
+        for jj in range(dim_labels):
+            if definitive_label[ii] == -1:
+                label_final_good[ii] = -1
+            elif definitive_label[ii] == good_labels[jj]:
+                label_final_good[ii] = correlative_labels[jj]
+
+    return label_final_good
+
 
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
