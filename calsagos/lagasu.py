@@ -787,469 +787,6 @@ def lagasu_supercluster(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
 
-def dbscan_stability(ra_galaxy, dec_galaxy, galaxy_separation, n_galaxies, metric_distance, method, nsim, percent_add, percent_rem, save_path):
-
-    """ dbscan_stability is a function that evaluate 
-    the stability of the assigantion of galaxies to
-    different groups
-
-    This function was developed by D. E. Olave-Rojas (11/27/2025)
-    
-	:param ra_galaxy: is the Right Ascension of each galaxy in
-        the sample. This parameter must be in degree units
-    :param dec_galaxy: is the Declination of each galaxy in
-        the sample. This parameter must be in degree units
-    :param redshift_galaxy: redshift of each galaxy in the 
-        cluster
-    :param galaxy_separation: physical separation between galaxies 
-        in a group. If metric_distance="euclidean" is selected, 
-        the unit should be degrees. If metric_distance="haversine" is 
-        selected, the unit should be radians.
-    :param n_galaxies: minimum number of galaxies to define a group
-    :param metric_distance: metric used to calcule the distance 
-        between instances in a feature array. Metric must be 
-        'euclidean' or 'haversine'
-    :param method: clustering algorithm used to grouping galaxies
-        in substructures. Method must be 'dbscan' or 'hdbscan'
-    :param nsim: number of simulation in boostrap resampling
-    :param percent_add: percentage that will be added to the sample.
-        This parameter must be a number between 0 to 1. 
-    :param percent_rem: percentage that will be removed from the 
-        sample. This parameter must be a number between 0 to 1.
-    :param save_path: path where the files will be saved
-
-    :type ra_galaxy         : array
-    :type dec_galaxy        : array
-	:type redshift_galaxy   : array
-    :type galaxy_separation : int, float 
-    :type n_galaxies        : int, float
-    :type metric_distance   : string  
-    :type method            : string
-    :type nsim              : int  
-    :type percent_add       : float
-    :type percent_rem       : float
-    :type save_path         : string
-    
-    .. note:: This test only evaluates the stability
-    of dbscan/hdbscan in the assignment to galaxies 
-    in groups.
-
-	"""
-    print("-- starting DBSCAN stability --")
-    print(" ")
-    print("--- input parameters ---")
-    print("Number of members        :", n_galaxies)
-    print("metric                   :", metric_distance)
-    print("method                   :", method)
-    print("No. simulations          :", nsim)
-    print("percentage to adding     :", round(percent_add*100))
-    print("percentage to removing   :", round(percent_rem*100))
-
-    print("  ")
-
-    #-- selecting galaxies that are part of a signle cut in redshift
-    ra = ra_galaxy
-    dec = dec_galaxy
-
-    #-- generate sample data
-    #-- creating a transposed array with the poition of galaxies to be used as input in the DBSCAN implementation
-    #-- metric implementation was added an June 17, 2024
-
-    if metric_distance == 'euclidean':
-        X = np.array([ra, dec]).T
-    elif metric_distance == 'haversine': 
-        ra_rad = np.radians(ra)
-        dec_rad = np.radians(dec)
-        X = np.array([ra_rad, dec_rad]).T
-    else:
-        #-- CORRECTION: handling unrecognized metrics
-        #-- this correction was done on December 05, 2025
-        X = np.array([ra, dec]).T
-        metric_distance = 'euclidean'
-        raise ValueError("Metric distance must be 'euclidean' or 'haversine' -- 'euclidean' metrics is used")
-    
-    #-- Performing the clustering algothims DBSCAN or HDBSCAN
-    if method == 'dbscan':
-        cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-    elif method == 'hdbscan':
-        cluster = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)   
-    else:
-        cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-        #-- handling unrecognized method
-        #-- this correction was done on December 05, 2025
-        raise ValueError("Clustering method must be 'dbscan' or 'hdbscan' -- 'dbscan' method is used")    
-    
-    #-- putting a label to each galaxy. This label allows us to assign each galaxy to a substructure
-    label_cluster_bic = cluster.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
-
-    #-- counting the number of groups in the random sample
-    n_clusters_original_bic = [c for c in np.unique(label_cluster_bic) if c != -1]
-    print(f"Number of groups in original sample         : {len(n_clusters_original_bic)}")
-
-    # --------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # ================================================================= ADD RANDOM POINTS TO THE SAMPLE ==================================================================
-
-    #-- creating random samples 
-    #-- stabillity adding points was added an November 26, 2025
-    print(" ")
-    print("... adding random points to the sample ...")
-
-    #-- 
-    n_clusters_list_random = []  # list to store cluster numbers 
-    ari_global_results = []
-    jaccard_individual_results = {k: [] for k in n_clusters_original_bic}
-
-    for i in range(nsim):
-        #-- Generate random points (the seed must be different in each iteration)
-        np.random.seed(i) # use the loop index as the seed to ensure randomness
-        number = int((len(X)*percent_add)) # add a random sample equivalent to 80% of the original sample
-
-        random_points = np.random.uniform(low=X.min(axis=0), 
-                                         high=X.max(axis=0), 
-                                         size=(number, 2))
-
-        #-- combining samples
-        X_random = np.vstack([X, random_points])
-
-        #-- Performing the clustering algothims DBSCAN or HDBSCAN in random sample
-        if method == 'dbscan':
-            cluster_random = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_random)
-        elif method == 'hdbscan':
-            cluster_random = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_random)   
-
-        #-- putting a label to each galaxy in the random sample. This label allows us to assign each galaxy to a substructure
-        label_cluster_bic_random = cluster_random.labels_ # the label_dbscan_bic_random is the label of each odentified substructure in the new sample. This parameter is a numpy.ndarray
-
-        #-- estimating number of clusters
-        n_clusters_random = len(set(label_cluster_bic_random)) - (1 if -1 in label_cluster_bic_random else 0)
-        n_clusters_list_random.append(n_clusters_random)
-
-        #-- preparing the labels for comparison 
-        #-- selection of the labels for the first N initial points of X_random
-        labels_random_initial = label_cluster_bic_random[:len(X)]
-
-        #-- filter out noisy points for a purer stability comparison
-        #  --- creating a mask to include only the points that were NOT noisy in ANY of the runs
-        stable_mask = (label_cluster_bic != -1) & (labels_random_initial != -1)
-
-        if np.sum(stable_mask) < 2:
-                       
-            # Caso 1: No hay suficientes puntos estables para un cálculo significativo.
-            ari_global_results.append(np.nan)
-            for k in n_clusters_original_bic:
-                jaccard_individual_results[k].append(np.nan)
-            continue # Ir a la siguiente iteración
-    
-            # Caso 2: Sí hay suficientes puntos estables (al menos 2).
-    
-        # A. Cálculo de la Estabilidad Global (ARI)
-        ari = adjusted_rand_score(label_cluster_bic[stable_mask], 
-                                  labels_random_initial[stable_mask])
-        ari_global_results.append(ari)
-    
-        # B. Cálculo de la Estabilidad Individual (Jaccard)
-        for k in n_clusters_original_bic:
-            A_inicial = (label_cluster_bic == k)
-            B_nueva = (labels_random_initial == k)
-        
-            A_stable_jaccard = A_inicial[stable_mask]
-            B_stable_jaccard = B_nueva[stable_mask]
-
-            # Lógica para evitar Jaccard con conjuntos vacíos, garantizando que siempre se añada un valor
-            if np.sum(A_stable_jaccard) == 0 and np.sum(B_stable_jaccard) == 0:
-                jaccard = 1.0 
-            elif np.sum(A_stable_jaccard) == 0 or np.sum(B_stable_jaccard) == 0:
-                jaccard = 0.0 
-            else:
-                jaccard = jaccard_score(A_stable_jaccard, B_stable_jaccard, pos_label=1)
-            
-            jaccard_individual_results[k].append(jaccard) # <-- ¡Esta línea siempre se ejecuta ahora!
-
-    avg_n_clusters_random = np.mean(n_clusters_list_random)
-    std_n_clusters_random = np.std(n_clusters_list_random)
-
-    print(f"Number of groups adding {round(percent_add*100)}% of galaxies     : {avg_n_clusters_random:.0f}")
-    print(f"Standar deviation of the numeber of groups  : {round(std_n_clusters_random):.0f}")
-       
-    if ari_global_results:
-        mean_ari = np.mean(ari_global_results)
-        std_ari = np.std(ari_global_results)
-        print(f"mean ARI score adding {round(percent_add*100)}% of galaxies       : {mean_ari:.4f}")
-        print(f"Standard deviation of the ARI score         : {std_ari:.4f}")
-    print(" ")
-
-    # --- Assesing individual stability 
-    print("... assessing individual stability ...")
-    print("        --- Jaccard index ---")
-    results_df = pd.DataFrame(jaccard_individual_results)
-    summary = results_df.agg(['mean', 'std']).T
-    print(summary.to_string(float_format="%.4f"))
-    summary.columns = ['mean_add', 'std_add']
-    
-    print(" ")
-
-    # --------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # =============================================================== REMOVE RANDOM POINTS FROM THE SAMPLE ===============================================================
-
-    print("... removing random points from the sample ...")
-    #-- Remove points at random (Subsampling)
-    #-- stabillity removing points was added an November 26, 2025
-
-    sample_size = len(X)
-    removal_percentage = percent_rem # -- removing 20% of the sample
-    n_to_remove = int(sample_size * removal_percentage)
-
-    n_clusters_list_subsample = []
-    ari_global_results_subsample = []
-    jaccard_individual_results_subsample = {k: [] for k in n_clusters_original_bic}
-
-    for i in range(nsim):
-        #-- Generate random points (the seed must be different in each iteration)
-        np.random.seed(i) # use the loop index as the seed to ensure randomness
-        indices_to_keep = np.random.choice(sample_size, 
-                                         sample_size - n_to_remove, 
-                                         replace=False)
-
-        #-- Create the new subsampled sample
-        X_subsample = X[indices_to_keep]
-
-        #-- Performing the clustering algothims DBSCAN or HDBSCAN in random subsample
-        if method == 'dbscan':
-            cluster_subsample = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_subsample)
-        elif method == 'hdbscan':
-            cluster_subsample = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_subsample)   
-
-        #-- putting a label to each galaxy in the subsample. This label allows us to assign each galaxy to a substructure
-        label_cluster_bic_subsample = cluster_subsample.labels_ # the label_dbscan_bic_subsample is the label of each odentified substructure in the new sample. This parameter is a numpy.ndarray
-
-        #-- estimating number of clusters
-        n_clusters_subsample = len(set(label_cluster_bic_subsample)) - (1 if -1 in label_cluster_bic_subsample else 0)
-        n_clusters_list_subsample.append(n_clusters_subsample)
-
-        #-- project the subsample labels onto the initial sample
-        #-- create an array of labels the size of X, initialized to -1 (removed/noise)
-        labels_projected = np.full(len(X), -1, dtype=int)
-
-        #-- assign the new labels to the points that were retained
-        labels_projected[indices_to_keep] = label_cluster_bic_subsample # indices_to_keep stores the positions of the points that survived
-
-        #-- filter for a pure stability comparison
-        #-- filter to compare only the points that were assigned to a cluster (not noise)
-        #-- in the initial run and that survived the subsampling (are not -1 in the projection).
-        stable_sub_mask = (label_cluster_bic != -1) & (labels_projected != -1)
-
-        if np.sum(stable_sub_mask) < 2:
-                       
-        # Caso 1: No hay suficientes puntos estables para un cálculo significativo.
-            ari_global_results_subsample.append(np.nan)
-            for k in n_clusters_original_bic:
-                jaccard_individual_results_subsample[k].append(np.nan)
-            continue # Ir a la siguiente iteración
-        
-        # A. Cálculo de la Estabilidad Global (ARI)
-        ari_subsample = adjusted_rand_score(labels_projected[stable_sub_mask], 
-                                    labels_random_initial[stable_sub_mask])
-        ari_global_results_subsample.append(ari_subsample)
-
-        # B. Cálculo de la Estabilidad Individual (Jaccard)
-        for k in n_clusters_original_bic:
-            A_initial = (label_cluster_bic == k)
-            B_projected = (labels_projected== k)
-        
-            A_stable_jaccard_sub = A_initial[stable_sub_mask]
-            B_stable_jaccard_sub = B_projected[stable_sub_mask]
-
-            # Lógica para evitar Jaccard con conjuntos vacíos, garantizando que siempre se añada un valor
-            if np.sum(A_stable_jaccard_sub) == 0 and np.sum(B_stable_jaccard_sub) == 0:
-                jaccard_subsample = 1.0 
-            elif np.sum(A_stable_jaccard_sub) == 0 or np.sum(B_stable_jaccard_sub) == 0:
-                jaccard_subsample = 0.0 
-            else:
-                jaccard_subsample = jaccard_score(A_stable_jaccard_sub, B_stable_jaccard_sub, pos_label=1)
-            
-            jaccard_individual_results_subsample[k].append(jaccard_subsample) # <-- ¡Esta línea siempre se ejecuta ahora!
-
-    avg_n_clusters_subsample = np.mean(n_clusters_list_subsample)
-    std_n_clusters_subsample = np.std(n_clusters_list_subsample)
-
-    print(f"Number of groups removing {round(percent_rem*100)}% of galaxies   : {avg_n_clusters_subsample:.0f}")
-    print(f"Standar deviation of the numeber of groups  : {round(std_n_clusters_subsample):.0f}")
-        
-    if ari_global_results_subsample:
-        mean_ari_sub = np.mean(ari_global_results_subsample)
-        std_ari_sub = np.std(ari_global_results_subsample)
-        print(f"mean ARI score removing {round(percent_rem*100)}% of galaxies     : {mean_ari_sub:.4f}")
-        print(f"Standard deviation of the ARI score         : {std_ari_sub:.4f}")
-    print(" ")
-
-    # --- Assesing individual stability 
-    print("... assessing individual stability ...")
-    print("        --- Jaccard index ---")
-    results_df_sub = pd.DataFrame(jaccard_individual_results_subsample)
-    summary_sub = results_df_sub.agg(['mean', 'std']).T
-    print(summary_sub.to_string(float_format="%.4f"))
-    summary_sub.columns = ['mean_sub', 'std_sub']
-
-    print(" ")
-
-    # --------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # ===================================================================== BOOTSTRAP IMPLEMENTATION =====================================================================
-
-    print("... Performing ", nsim, " Bootstrap iterations ...")
-    print("...")
-
-    N = len(X) # size of sample
-    bootstrap_labels = [] # list to store labels found by bootstrap
-    n_clusters_list = []  # list to store cluster numbers 
-    ari_scores = []       # list to store the ARI's score 
-
-    for i in range(nsim):
-        #-- Sampling with replacement (Bootstrap)
-        sample_indices = np.random.choice(N, size=N, replace=True)
-        X_bootstrap = X[sample_indices]
-
-        #-- Apply DBSCAN to the Bootstrap sample
-        if method == 'dbscan':
-            cluster_bootstrap = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_bootstrap)
-        elif method == 'hdbscan':
-            cluster_bootstrap = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_bootstrap)  
-
-        labels_boot = cluster_bootstrap.labels_
-    
-        #-- estimating number of clusters
-        n_clusters_boot = len(set(labels_boot)) - (1 if -1 in labels_boot else 0)
-        n_clusters_list.append(n_clusters_boot)
-
-        #-- mapping labels to compute ARI index
-        labels_boot_mapped = np.full(N, -2, dtype=int)
-        labels_boot_mapped[sample_indices] = labels_boot
-
-        bootstrap_labels.append(labels_boot_mapped)
-    
-        #-- Meassuring ARI index
-        #--- ARI index is only estimating for the galaxies that were sampled
-        #--- First we compare the original labels of those galaxies that were sampled with the bootstrap labels found
-    
-        #-- selecting original labels for the sampled galaxies 
-        labels_original_subset = label_cluster_bic[sample_indices]
-    
-        #--Bootstrap labels found for those galaxies that were sampled 
-        labels_boot_subset = labels_boot
-  
-        #-- importing ARI index to compare the similarity between two cluster assignments
-        ari_score = adjusted_rand_score(labels_original_subset, labels_boot_subset)
-        ari_scores.append(ari_score)
-        
-    #-- estimating mean and standard deviation of the groups found in the original sample   
-    avg_n_clusters = np.mean(n_clusters_list)
-    std_n_clusters = np.std(n_clusters_list)
-
-    print(f"Number of groups in Bootstrap               : {avg_n_clusters:.0f}")
-    print(f"Standar deviation of the numeber of groups  : {round(std_n_clusters):.0f}")
-
-    #-- estimating mean and standard deviation of the ARI index   
-    avg_ari = np.mean(ari_scores)
-    std_ari = np.std(ari_scores)
-
-    print(f"mean ARI score for the Bootstrap            : {avg_ari:.4f}")
-    print(f"Standard deviation of the ARI score         : {std_ari:.4f}")
-    print(" ")
-
-
-    # --- Assesing individual stability 
-    print("... assessing individual stability ...")
-    print("...")
-
-    co_occurrence_matrix = np.zeros((N, N))
-
-    for labels in bootstrap_labels:
-        #-- only points that were sampled (label != -2) are considered
-        sampled_indices = np.where(labels != -2)[0]
-    
-        #-- create a temporal co-classification matrix for this iteration
-        temp_co_matrix = np.zeros((N, N))
-    
-        #-- iterates over all pairs of sampled points
-        for i in sampled_indices:
-            for j in sampled_indices:
-                if i <= j: # Only the upper half is calculated for symmetry
-                # If both points have the same cluster label (including noise -1)
-                # and both were sampled (label != -2), increment the counter.
-                    if labels[i] == labels[j] and labels[i] != -2:
-                        temp_co_matrix[i, j] = 1
-                    if i != j:
-                        temp_co_matrix[j, i] = 1
-
-        co_occurrence_matrix += temp_co_matrix
-
-    #-- normalization and Stability Visualization
-    #-- divide by the number of iterations to obtain the co-occurrence probability
-    co_occurrence_probability = co_occurrence_matrix / nsim
-
-    labels_original = label_cluster_bic # label in the original iteration 
-    unique_clusters = set(labels_original)
-    stability_results = {}
-
-    for cluster_label in unique_clusters:
-        if cluster_label == -1:
-            #-- exclude "noise" points
-            continue
-
-        #-- find the indices of the points that belong to this cluster
-        cluster_indices = np.where(labels_original == cluster_label)[0]
-
-        #-- if the cluster has fewer than 2 points, co-occurrence cannot be calculated
-        if len(cluster_indices) < 2:
-            stability_results[cluster_label] = 0.0
-            continue
-
-        #-- extract the co-occurrence submatrix for this cluster
-        submatrix = co_occurrence_probability[np.ix_(cluster_indices, cluster_indices)]
-
-        #-- estimate the average co-occurrence:
-        #--- Sum all the elements of the submatrix
-        #--- Subtract the diagonal (the co-occurrence of a point with itself is always 1)
-        #--- Divide by the total number of pairs (N * (N - 1))
-    
-        N_k = len(cluster_indices)
-        sum_co_occurrence = np.sum(submatrix)
-    
-        #-- subtract the diagonal (N_k)
-        total_co_occurrence_pairs = sum_co_occurrence - N_k
-
-        #-- total number of possible unique pairs within the cluster (excluding the diagonal)
-        num_pairs = N_k * (N_k - 1)
-    
-        if num_pairs > 0:
-            avg_co_occurrence = total_co_occurrence_pairs / num_pairs
-        else:
-            avg_co_occurrence = 0.0
-
-        stability_results[cluster_label] = avg_co_occurrence
-
-    results_boot = pd.DataFrame({k: [v] for k, v in stability_results.items()})
-    summary_boot = results_boot.agg(['mean']).T
-    print(summary_boot.to_string(float_format="%.4f"))
-    summary_boot.columns = ['mean_boot']
-
-
-    # --------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-    print(" ")
-    print("-- ending LAGASU stability--")
-
-    join_summary = pd.concat([summary, summary_sub, summary_boot], axis=1)
-    join_summary_final = join_summary.reset_index().rename(columns={'index': 'groups'})
-    join_summary_final.to_csv(save_path, float_format="%.4f", index=False)
-
-    print(" ")
-    print(f"Stability results successfully saved in : {save_path}" )    #-- returning output quantity
-
-    return
-
-#####################################################################################################################################################################################
-#####################################################################################################################################################################################
-
 def lagasu_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy_separation, n_galaxies, metric_distance, method):
 
     """ LAGASU_raw is a raw version of LAGASU developed
@@ -1585,187 +1122,6 @@ def lagasu_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, ga
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
 
-def lagasu_bootstrap_stability_analysis(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy_separation, n_galaxies, metric_distance, method, n_bootstrap):
-        
-    """
-    Function that performs N bootstrap iterations to 
-    analyze the stability of each group found in a sample
-    using lagasu_raw.
-
-    This function combines global stability analysis and 
-    individual stability analysis 
-
-    This funcion was develop by D. E. Olave-Rojas
-    and check by Gemini (12/03/2025)
-
-    The input is the same as of LAGASU_raw plus n_bootstrap
-
-    :param id_galaxy: identifier of each galaxy in the sample
-	:param ra_galaxy: is the Right Ascension of each galaxy in
-        the sample. This parameter must be in degree units
-    :param dec_galaxy: is the Declination of each galaxy in
-        the sample. This parameter must be in degree units
-    :param redshift_galaxy: redshift of each galaxy in the 
-        cluster
-    :param range_cuts: to perform the cuts in the redshift 
-        space is neccesary to give a range that allows find the 
-        best number of cuts in redshift. The parameter "range_cuts" 
-        is the end of the range which is defined in LAGASU as 
-        range(1, range_cuts). Therefore, range_cuts must be greater 
-        than 1
-    :param galaxy_separation: physical separation between 
-        galaxies in a substructure the units must be the 
-        same as the ra_galaxy and dec_galaxy
-    :param n_galaxies: minimum number of galaxies to define a group
-    :param metric_distance: metric used to calcule the distance 
-        between instances in a feature array. Metric must be 
-        'euclidean' or 'haversine'
-    :param method: clustering algorithm used to grouping galaxies
-        in substructures. Method must be 'dbscan' or 'hdbscan'
-    :param n_bootstrap : number of simulation in boostrap resampling
-
-    :type id_galaxy         : array
-    :type ra_galaxy         : array
-    :type dec_galaxy        : array
-	:type redshift_galaxy   : array
-    :type range_cuts        : int
-    :type galaxy_separation : int, float 
-    :type n_galaxies        : int, float
-    :type metric_distance   : string  
-    :type method            : string 
-    :type n_bootstrap       : int 
-
-	:returns: global and individual index to check 
-        the stability of groups
-   
-    .. note::
-        ** Global stability ** 
-        mean_ari = lagasu_bootstrap_stability_analysis['ari']['mean']
-        std_ari = lagasu_bootstrap_stability_analysis['std']['mean']
-
-        ** Individual stability ** 
-        mean_jaccard = lagasu_bootstrap_stability_analysis['jaccard_mean']
-        std_jaccard = lagasu_bootstrap_stability_analysis['jaccard_std']
-        n_galaxies = lagasu_bootstrap_stability_analysis['n_galaxies_original']
-
-    """
-
-    N = len(id_galaxy)
-    ari_scores = []
-    all_jaccard_scores = {}
-
-    #-- runing lagasu_raw in the original sample
-    print("... Runing lagasu_raw in the original data ...")
-    result_original = lagasu_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy_separation, n_galaxies, metric_distance, method)
-
-    # -- selecting labels for each galaxy
-    labels_original = result_original[5]
-
-    #-- identifiying original groups excluding galaxies out of them
-    unique_groups_original = [g for g in np.unique(labels_original) if g != -1]
-    
-    if not unique_groups_original:
-        print(" WARNING: No groups were identified in the original sample")
-        return {'ari': {'mean': 0.0, 'std': 0.0, 'scores': []}, 'individual': {}}
-
-    original_group_indices = {
-        g: np.where(labels_original == g)[0] for g in unique_groups_original
-    }
-    for g in unique_groups_original:
-        all_jaccard_scores[g] = []
-
-    print(f"Groups identified in the original sample: {unique_groups_original}")
-    print(f"\n... Starting {n_bootstrap} Bootstrap iterations ...")
-    print("...")
-    
-    #-- starting n bootstrap iterations
-    for i in range(n_bootstrap):
-
-        #-- Sampling with replacement
-        indices_bootstrap = np.random.choice(N, size=N, replace=True)
-
-        # Applying the resampling the indices to the data
-        id_bs = id_galaxy[indices_bootstrap]
-        ra_bs = ra_galaxy[indices_bootstrap]
-        dec_bs = dec_galaxy[indices_bootstrap]
-        redshift_bs = redshift_galaxy[indices_bootstrap]
-
-        #-- runing lagasu_raw in the bootsrap sample
-        result_bs = lagasu_raw(id_bs, ra_bs, dec_bs, redshift_bs, range_cuts, galaxy_separation, n_galaxies, metric_distance, method)
-    
-        # -- selecting labels for each galaxy
-        labels_bs = result_bs[5]
-        
-        #-- estimating the global stability using ARI index
-        # The Adjusted Rand Index (ARI) is used as a metric to compare groups labels obtained from the original dataset 
-        # with those obtained from each bootstrap sample. The ARI measures the similarity between two groupings, ignoring permutations
-        # a value of 1.0 for perfect agreement and 0.0 (or negative) for random agreement.
-        
-        labels_original_subset = labels_original[indices_bootstrap]
-        ari = adjusted_rand_score(labels_original_subset, labels_bs)
-        ari_scores.append(ari)
-
-        #-- estimating the individual estability using the Jaccard Index
-        # The Jaccard Index is ideal for measuring the similarity between two datasets.
-        # For a group G from the original sample and a group H from a bootstrap sample, 
-        # the Jaccard indez is defined as the ratio between the number of galaxies in both groups
-        # and the number of galaxies in at least a group
-
-        unique_groups_bs = [g for g in np.unique(labels_bs) if g != -1]
-
-        for g_original in unique_groups_original:
-            indices_original = original_group_indices[g_original]
-            
-            #-- selecting galaxies from the original group that were sampled
-            galaxies_in_original_group_and_bootstrap = id_galaxy[indices_original]
-            
-            max_jaccard = 0.0
-            
-            for g_bs in unique_groups_bs:
-                #-- selecting the id of the bootstrap group galaxy
-                indices_bs_group = np.where(labels_bs == g_bs)[0]
-                galaxies_in_bootstrap_group = id_bs[indices_bs_group]
-                
-                #-- estimating the Jaccard Index
-                jaccard = utils.calculate_jaccard_index(
-                    galaxies_in_original_group_and_bootstrap, 
-                    galaxies_in_bootstrap_group
-                )
-
-                if jaccard > max_jaccard:
-                    max_jaccard = jaccard
-            
-            all_jaccard_scores[g_original].append(max_jaccard)
-
-    print("...")
-    print(f"\n... Ending {n_bootstrap} Bootstrap iterations ...")
-
-    #-- consolidation of Results
-    
-    #-- global Results (ARI)
-    ari_mean = np.mean(ari_scores)
-    ari_std = np.std(ari_scores)
-
-    #-- individual Results (Jaccard Index)
-    individual_results = {}
-    for g, scores in all_jaccard_scores.items():
-        if scores:
-            individual_results[g] = {
-                'jaccard_mean': np.mean(scores),
-                'jaccard_std': np.std(scores),
-                'n_galaxies_original': len(original_group_indices[g])
-            }
-        else:
-            individual_results[g] = {'jaccard_mean': 0.0, 'jaccard_std': 0.0, 'n_galaxies_original': len(original_group_indices[g])}
-
-    return {
-        'ari': {'mean': ari_mean, 'std': ari_std, 'scores': ari_scores},
-        'individual': individual_results
-    }
-
-#####################################################################################################################################################################################
-#####################################################################################################################################################################################
-
 def lagasu_subsampling_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy_separation, n_galaxies, metric_distance, method):
 
     """ LAGASU_subsampling_raw is a raw version of LAGASU 
@@ -1943,7 +1299,6 @@ def lagasu_subsampling_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, ra
             #-- selecting galaxies that are part of a signle cut in redshift
             ra = ra_galaxy[n_redshift_groups]
             dec = dec_galaxy[n_redshift_groups]
-            id = id_galaxy[n_redshift_groups]
 
             #-- generate sample data
             #-- creating a transposed array with the poition of galaxies to be used as input in the DBSCAN implementation
@@ -1978,22 +1333,21 @@ def lagasu_subsampling_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, ra
             #-- selecting the labels of the groups found by DBSCAN in each redshift cut
             groups = np.unique(label_cluster_bic) # number of groups in each redshift cut
 
+        #-- CORRECCTION: Unified initialization of accumulation variables
+        #-- this correction was done on December 05, 2025
+        if is_first_valid_cut:
+            p = groups # array with the unique labels that could be assign to a single galaxy
+            tam_groups = np.array([len(groups)]) # size of the each idenfied substructure
+            labels_dbscan_bic = label_cluster_bic # label used to identified each substructure
+            first_element_groups = groups[[0]] if len(groups) > 0 else np.array([], dtype=int) # first element in the array with the labels of the substructures
+            is_first_valid_cut = False # It has already been initialized
+        else:
+            p = np.append(p, groups)
+            tam_groups = np.append(tam_groups, len(groups))
+            labels_dbscan_bic = np.append(labels_dbscan_bic, label_cluster_bic)
+            if len(groups) > 0:
+                first_element_groups = np.append(first_element_groups, groups[0])
     # -- END OF LOOP --
-
-    #-- CORRECCTION: Unified initialization of accumulation variables
-    #-- this correction was done on December 05, 2025
-    if is_first_valid_cut:
-        p = groups # array with the unique labels that could be assign to a single galaxy
-        tam_groups = np.array([len(groups)]) # size of the each idenfied substructure
-        labels_dbscan_bic = label_cluster_bic # label used to identified each substructure
-        first_element_groups = groups[[0]] if len(groups) > 0 else np.array([], dtype=int) # first element in the array with the labels of the substructures
-        is_first_valid_cut = False # It has already been initialized
-    else:
-        p = np.append(p, groups)
-        tam_groups = np.append(tam_groups, len(groups))
-        labels_dbscan_bic = np.append(labels_dbscan_bic, label_cluster_bic)
-        if len(groups) > 0:
-            first_element_groups = np.append(first_element_groups, groups[0])
 
     #-- CORRECTION: Handling cases without valid cuts
     #-- this correction was done on December 05, 2025
@@ -2163,6 +1517,190 @@ def lagasu_subsampling_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, ra
 
     #-- returning output quantity
     return lagasu_parameters
+
+
+#####################################################################################################################################################################################
+#####################################################################################################################################################################################
+
+def lagasu_bootstrap_stability_analysis(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy_separation, n_galaxies, metric_distance, method, n_bootstrap):
+        
+    """
+    Function that performs N bootstrap iterations to 
+    analyze the stability of each group found in a sample
+    using lagasu_raw.
+
+    This function combines global stability analysis and 
+    individual stability analysis 
+
+    This funcion was develop by D. E. Olave-Rojas
+    and check by Gemini (12/03/2025)
+
+    The input is the same as of LAGASU_raw plus n_bootstrap
+
+    :param id_galaxy: identifier of each galaxy in the sample
+	:param ra_galaxy: is the Right Ascension of each galaxy in
+        the sample. This parameter must be in degree units
+    :param dec_galaxy: is the Declination of each galaxy in
+        the sample. This parameter must be in degree units
+    :param redshift_galaxy: redshift of each galaxy in the 
+        cluster
+    :param range_cuts: to perform the cuts in the redshift 
+        space is neccesary to give a range that allows find the 
+        best number of cuts in redshift. The parameter "range_cuts" 
+        is the end of the range which is defined in LAGASU as 
+        range(1, range_cuts). Therefore, range_cuts must be greater 
+        than 1
+    :param galaxy_separation: physical separation between 
+        galaxies in a substructure the units must be the 
+        same as the ra_galaxy and dec_galaxy
+    :param n_galaxies: minimum number of galaxies to define a group
+    :param metric_distance: metric used to calcule the distance 
+        between instances in a feature array. Metric must be 
+        'euclidean' or 'haversine'
+    :param method: clustering algorithm used to grouping galaxies
+        in substructures. Method must be 'dbscan' or 'hdbscan'
+    :param n_bootstrap : number of simulation in boostrap resampling
+
+    :type id_galaxy         : array
+    :type ra_galaxy         : array
+    :type dec_galaxy        : array
+	:type redshift_galaxy   : array
+    :type range_cuts        : int
+    :type galaxy_separation : int, float 
+    :type n_galaxies        : int, float
+    :type metric_distance   : string  
+    :type method            : string 
+    :type n_bootstrap       : int 
+
+	:returns: global and individual index to check 
+        the stability of groups
+   
+    .. note::
+        ** Global stability ** 
+        mean_ari = lagasu_bootstrap_stability_analysis['ari']['mean']
+        std_ari = lagasu_bootstrap_stability_analysis['std']['mean']
+
+        ** Individual stability ** 
+        mean_jaccard = lagasu_bootstrap_stability_analysis['jaccard_mean']
+        std_jaccard = lagasu_bootstrap_stability_analysis['jaccard_std']
+        n_galaxies = lagasu_bootstrap_stability_analysis['n_galaxies_original']
+
+    """
+
+    N = len(id_galaxy)
+    ari_scores = []
+    all_jaccard_scores = {}
+
+    #-- runing lagasu_raw in the original sample
+    print("... Runing lagasu_subsampling_raw in the original data ...")
+    result_original = lagasu_subsampling_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy_separation, n_galaxies, metric_distance, method)
+
+    # -- selecting labels for each galaxy
+    labels_original = result_original[5]
+
+    #-- identifiying original groups excluding galaxies out of them
+    unique_groups_original = [g for g in np.unique(labels_original) if g != -1]
+    
+    if not unique_groups_original:
+        print(" WARNING: No groups were identified in the original sample")
+        return {'ari': {'mean': 0.0, 'std': 0.0, 'scores': []}, 'individual': {}}
+
+    original_group_indices = {
+        g: np.where(labels_original == g)[0] for g in unique_groups_original
+    }
+    for g in unique_groups_original:
+        all_jaccard_scores[g] = []
+
+    print(f"Groups identified in the original sample: {unique_groups_original}")
+    print(f"\n... Starting {n_bootstrap} Bootstrap iterations ...")
+    print("...")
+    
+    #-- starting n bootstrap iterations
+    for i in range(n_bootstrap):
+
+        #-- Sampling with replacement
+        indices_bootstrap = np.random.choice(N, size=N, replace=True)
+
+        # Applying the resampling the indices to the data
+        id_bs = id_galaxy[indices_bootstrap]
+        ra_bs = ra_galaxy[indices_bootstrap]
+        dec_bs = dec_galaxy[indices_bootstrap]
+        redshift_bs = redshift_galaxy[indices_bootstrap]
+
+        #-- runing lagasu_raw in the bootsrap sample
+        result_bs = lagasu_subsampling_raw(id_bs, ra_bs, dec_bs, redshift_bs, range_cuts, galaxy_separation, n_galaxies, metric_distance, method)
+    
+        # -- selecting labels for each galaxy
+        labels_bs = result_bs[5]
+        
+        #-- estimating the global stability using ARI index
+        # The Adjusted Rand Index (ARI) is used as a metric to compare groups labels obtained from the original dataset 
+        # with those obtained from each bootstrap sample. The ARI measures the similarity between two groupings, ignoring permutations
+        # a value of 1.0 for perfect agreement and 0.0 (or negative) for random agreement.
+        
+        labels_original_subset = labels_original[indices_bootstrap]
+        ari = adjusted_rand_score(labels_original_subset, labels_bs)
+        ari_scores.append(ari)
+
+        #-- estimating the individual estability using the Jaccard Index
+        # The Jaccard Index is ideal for measuring the similarity between two datasets.
+        # For a group G from the original sample and a group H from a bootstrap sample, 
+        # the Jaccard indez is defined as the ratio between the number of galaxies in both groups
+        # and the number of galaxies in at least a group
+
+        unique_groups_bs = [g for g in np.unique(labels_bs) if g != -1]
+
+        for g_original in unique_groups_original:
+            indices_original = original_group_indices[g_original]
+            
+            #-- selecting galaxies from the original group that were sampled
+            galaxies_in_original_group_and_bootstrap = id_galaxy[indices_original]
+            
+            max_jaccard = 0.0
+            
+            for g_bs in unique_groups_bs:
+                #-- selecting the id of the bootstrap group galaxy
+                indices_bs_group = np.where(labels_bs == g_bs)[0]
+                galaxies_in_bootstrap_group = id_bs[indices_bs_group]
+                
+                #-- estimating the Jaccard Index
+                jaccard = utils.calculate_jaccard_index(
+                    galaxies_in_original_group_and_bootstrap, 
+                    galaxies_in_bootstrap_group
+                )
+
+                if jaccard > max_jaccard:
+                    max_jaccard = jaccard
+            
+            all_jaccard_scores[g_original].append(max_jaccard)
+
+    print("...")
+    print(f"\n... Ending {n_bootstrap} Bootstrap iterations ...")
+
+    #-- consolidation of Results
+    
+    #-- global Results (ARI)
+    ari_mean = np.mean(ari_scores)
+    ari_median = np.median(ari_scores)
+    ari_std = np.std(ari_scores)
+
+    #-- individual Results (Jaccard Index)
+    individual_results = {}
+    for g, scores in all_jaccard_scores.items():
+        if scores:
+            individual_results[g] = {
+                'jaccard_mean': np.mean(scores),
+                'jaccard_median': np.median(scores),
+                'jaccard_std': np.std(scores),
+                'n_galaxies_original': len(original_group_indices[g])
+            }
+        else:
+            individual_results[g] = {'jaccard_mean': 0.0, 'jaccard_median':0.0, 'jaccard_std': 0.0, 'n_galaxies_original': len(original_group_indices[g])}
+
+    return {
+        'ari': {'mean': ari_mean, 'median':ari_median, 'std': ari_std, 'scores': ari_scores},
+        'individual': individual_results
+    }
 
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
@@ -2349,6 +1887,7 @@ def lagasu_subsampling_stability_analysis(id_galaxy, ra_galaxy, dec_galaxy, reds
 
     #-- consolidating and formatting the results
     ari_mean = np.mean(ari_scores)
+    ari_median = np.median(ari_scores)
     ari_std = np.std(ari_scores)
 
     #-- setting individual results (Jaccard Index)
@@ -2357,14 +1896,15 @@ def lagasu_subsampling_stability_analysis(id_galaxy, ra_galaxy, dec_galaxy, reds
         if scores:
             individual_results[g] = {
                 'jaccard_mean': np.mean(scores),
+                'jaccard_median': np.median(scores),
                 'jaccard_std': np.std(scores),
                 'n_galaxies_original': len(original_group_indices[g])
             }
         else:
-            individual_results[g] = {'jaccard_mean': 0.0, 'jaccard_std': 0.0, 'n_galaxies_original': len(original_group_indices[g])}
+            individual_results[g] = {'jaccard_mean': 0.0, 'jaccard_median':0.0, 'jaccard_std': 0.0, 'n_galaxies_original': len(original_group_indices[g])}
 
     return {
-        'ari': {'mean': ari_mean, 'std': ari_std, 'scores': ari_scores},
+        'ari': {'mean': ari_mean, 'median':ari_median, 'std': ari_std, 'scores': ari_scores},
         'individual': individual_results
     }
 
@@ -2443,7 +1983,7 @@ def lagasu_noise_stability_analysis(id_galaxy, ra_galaxy, dec_galaxy, redshift_g
     all_jaccard_scores = {}
 
     #-- runing lagasu_raw in the original sample
-    print("... Runing lagasu_subsampling_raw in the original data ...")
+    print("... Runing lagasu_raw in the original data ...")
     result_original = lagasu_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy_separation, n_galaxies, metric_distance, method)    
 
     labels_original = result_original[5]
@@ -2524,6 +2064,7 @@ def lagasu_noise_stability_analysis(id_galaxy, ra_galaxy, dec_galaxy, redshift_g
 
     #-- consolidating and formatting the results
     ari_mean = np.mean(ari_scores)
+    ari_median = np.median(ari_scores)
     ari_std = np.std(ari_scores)
 
     #-- setting individual results (Jaccard Index)
@@ -2532,17 +2073,592 @@ def lagasu_noise_stability_analysis(id_galaxy, ra_galaxy, dec_galaxy, redshift_g
         if scores:
             individual_results[g] = {
                 'jaccard_mean': np.mean(scores),
+                'jaccard_median': np.median(scores),
                 'jaccard_std': np.std(scores),
                 'n_galaxies_original': len(original_group_indices[g])
             }
         else:
-            individual_results[g] = {'jaccard_mean': 0.0, 'jaccard_std': 0.0, 'n_galaxies_original': len(original_group_indices[g])}
+            individual_results[g] = {'jaccard_mean': 0.0, 'jaccard_median':0.0, 'jaccard_std': 0.0, 'n_galaxies_original': len(original_group_indices[g])}
 
     return {
-        'ari': {'mean': ari_mean, 'std': ari_std, 'scores': ari_scores},
+        'ari': {'mean': ari_mean, 'median':ari_median, 'std': ari_std, 'scores': ari_scores},
         'individual': individual_results
     }
 
+#####################################################################################################################################################################################
+########################################################################### FUNCIONES NO PUBLICADAS ################################################################################# 
+#####################################################################################################################################################################################
+
+def lagasu_dbscan_stability(ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy_separation, n_galaxies, metric_distance, method, nsim, percent_add, percent_rem, save_path):
+
+    """ lagasu_dbscan_stability is a function that evaluate 
+    the stability of the assigantion of galaxies to
+    different groups
+
+    This function was developed by D. E. Olave-Rojas (11/27/2025)
+    
+	:param ra_galaxy: is the Right Ascension of each galaxy in
+        the sample. This parameter must be in degree units
+    :param dec_galaxy: is the Declination of each galaxy in
+        the sample. This parameter must be in degree units
+    :param redshift_galaxy: redshift of each galaxy in the 
+        cluster
+    :param range_cuts: to perform the cuts in the redshift 
+        space is neccesary to give a range that allows find the 
+        best number of cuts in redshift. The parameter "range_cuts" 
+        is the end of the range which is defined in LAGASU as 
+        range(1, range_cuts). Therefore, range_cuts must be greater 
+        than 1
+    :param galaxy_separation: physical separation between galaxies 
+        in a group. If metric_distance="euclidean" is selected, 
+        the unit should be degrees. If metric_distance="haversine" is 
+        selected, the unit should be radians.
+    :param n_galaxies: minimum number of galaxies to define a group
+    :param metric_distance: metric used to calcule the distance 
+        between instances in a feature array. Metric must be 
+        'euclidean' or 'haversine'
+    :param method: clustering algorithm used to grouping galaxies
+        in substructures. Method must be 'dbscan' or 'hdbscan'
+    :param nsim: number of simulation in boostrap resampling
+    :param percent_add: percentage that will be added to the sample.
+        This parameter must be a number between 0 to 1. 
+    :param percent_rem: percentage that will be removed from the 
+        sample. This parameter must be a number between 0 to 1.
+    :param save_path: path where the files will be saved
+
+    :type ra_galaxy         : array
+    :type dec_galaxy        : array
+	:type redshift_galaxy   : array
+    :type range_cuts        : int
+    :type galaxy_separation : int, float 
+    :type n_galaxies        : int, float
+    :type metric_distance   : string  
+    :type method            : string
+    :type nsim              : int  
+    :type percent_add       : float
+    :type percent_rem       : float
+    :type save_path         : string
+    
+    .. note:: This test only evaluates the stability
+    of dbscan/hdbscan in the assignment to galaxies 
+    in groups.
+
+	"""
+    print("-- starting DBSCAN stability --")
+    print(" ")
+    print("--- input parameters ---")
+    print("Number of members        :", n_galaxies)
+    print("metric                   :", metric_distance)
+    print("method                   :", method)
+    print("No. simulations          :", nsim)
+    print("percentage to adding     :", round(percent_add*100))
+    print("percentage to removing   :", round(percent_rem*100))
+
+    print("  ")
+
+    # -- estimating central redshift of the distribution
+    good_z = np.where((redshift_galaxy != 99) & (redshift_galaxy > 0))[0]
+    redshift_cluster = biweight_location(redshift_galaxy[good_z])
+        
+    #-- creating a boolean mask. It is an array with True/False and True corresponds to the old value
+    anomalous_mask = (
+        ((redshift_galaxy > -99.) & (redshift_galaxy <= 0.)) | 
+        (redshift_galaxy == -99.) | 
+        (redshift_galaxy == 99.)
+    )
+
+    if anomalous_mask.any():
+        #-- warning message 
+        print(" WARNING!! Redshift values -99, 99, or <= 0 were found and will be replaced.")
+        print("... replacing anomalous values with the redshift cluster value ...")
+        #-- appliyinh mask 
+        redshift_galaxy[anomalous_mask] = redshift_cluster
+
+    #-- Gaussian Mixture Models (GMM) divides the sample in ranges of redshift in order to consider the volume of the cluster
+    #-- The divissión is perform without an arbitrary number of cuts in the redshift distribution and the number of cuts are in a range
+    #-- The divissión in the redshift space is perform without an arbitrary number of cuts by using the Bayesian Information Criterion (BIC), 
+    # which selects the better number of cuts according to the data 
+    #-- The number of cuts found by BIC are in a range given in the input as "range_cuts"
+    
+    #-- creating a transposed array with the redshift_galaxy to be used as input in the GMM implementation
+    candidate_galaxies = np.array([redshift_galaxy]).T
+
+    #-- defining the lowest bic parameter
+    lowest_bic = np.infty
+
+    #-- initializing the variable
+    bic = []
+    
+    #-- defining the number of possible cuts in the redshift space
+    n_components_range = range(1, range_cuts)
+
+    #-- defining a list with the types of covariances used in the implementation of GMM-BIC
+    cv_types = ['spherical', 'tied', 'diag', 'full']
+    
+    #--- START OF LOOP ---
+
+    for cv_type in cv_types:
+    
+        for n_components in n_components_range:
+    
+    	    #-- Fit a mixture of Gaussians with Expectation Maximization (EM)
+            gmm = mixture.GaussianMixture(n_components=n_components, covariance_type=cv_type, random_state=4)
+
+            #-- Fit the Gaussian over the data 
+            gmm.fit(candidate_galaxies)
+
+            bic.append(gmm.bic(candidate_galaxies))
+
+            #-- selecting the best fit
+            if bic[-1] < lowest_bic:
+
+                lowest_bic = bic[-1]
+
+                best_gmm = gmm
+
+    # -- END OF LOOP --
+    bic = np.array(bic)
+    clf = best_gmm
+    print("Best model GMM       :", best_gmm)
+    
+    #-- defining the parameters of the best fit
+    n_cuts_bic = clf.n_components # number of cuts do by the algorithms 
+    print("Number of GMM cuts  :", n_cuts_bic)
+    #-- putting a label to each galaxy. This label allows us to separe and assign each galaxy to a redshift cut
+    labels_bic = clf.predict(candidate_galaxies) # using this label we can separate galaxies into n groups that correspond to redshifts cuts
+    
+    #-- To assign galaxies to different substructures we use Density-Based Spatial Clustering of Applications with Noise (DBSCAN, Ester et al. 1996)
+    #-- To identify groups using DBSCAN we must define a minimum number of neighbouring objects separated by a specific distance. 
+    #-- DBSCAN does not assign all objects in the sample to one group (Ester et al. 1996) and we can remove the galaxies that are not spatially grouped with others
+
+    #-- sorting the output labels given by GMM-BIC implementation 
+    sorted_labels_bic = np.sort(labels_bic)
+
+    all_summary_results = []
+
+    #--- START OF LOOP ---
+    for ii in range(0,n_cuts_bic): # n_cuts_bic are the number of cuts given by the GMM implementation
+
+        #-- defining a single redshift cut in which DBSCAN will be apply
+        n_redshift_groups = np.where(labels_bic == ii)[0] 
+
+        #-- selecting galaxies that are part of a signle cut in redshift
+        ra = ra_galaxy[n_redshift_groups]
+        dec = dec_galaxy[n_redshift_groups]
+
+        if len(ra) < n_galaxies:
+            print(f"Skipping redshift cut {ii}: Not enough galaxies ({len(ra)} < min_samples={n_galaxies}).")
+            continue
+
+        #-- generate sample data
+        #-- creating a transposed array with the poition of galaxies to be used as input in the DBSCAN implementation
+        #-- metric implementation was added an June 17, 2024
+
+        if metric_distance == 'euclidean':
+            X = np.array([ra, dec]).T
+        elif metric_distance == 'haversine': 
+            ra_rad = np.radians(ra)
+            dec_rad = np.radians(dec)
+            X = np.array([ra_rad, dec_rad]).T
+        else:
+            #-- CORRECTION: handling unrecognized metrics
+            #-- this correction was done on December 05, 2025
+            X = np.array([ra, dec]).T
+            metric_distance = 'euclidean'
+            raise ValueError("Metric distance must be 'euclidean' or 'haversine' -- 'euclidean' metrics is used")
+    
+        #-- Performing the clustering algothims DBSCAN or HDBSCAN
+        if method == 'dbscan':
+            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
+        elif method == 'hdbscan':
+            cluster = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)   
+        else:
+            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
+            #-- handling unrecognized method
+            #-- this correction was done on December 05, 2025
+            raise ValueError("Clustering method must be 'dbscan' or 'hdbscan' -- 'dbscan' method is used")    
+    
+        #-- putting a label to each galaxy. This label allows us to assign each galaxy to a substructure
+        label_cluster_bic = cluster.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
+
+        #-- counting the number of groups in the random sample
+        n_clusters_original_bic = [c for c in np.unique(label_cluster_bic) if c != -1]
+        print(f"Number of groups in original sample         : {len(n_clusters_original_bic)}")
+
+        if len(ra) < n_galaxies:
+            print(f"Skipping redshift cut {ii}: Not enough galaxies ({len(ra)} < min_samples={n_galaxies}).")
+            continue
+
+        # --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        # ================================================================= ADD RANDOM POINTS TO THE SAMPLE ==================================================================
+
+        #-- creating random samples 
+        #-- stabillity adding points was added an November 26, 2025
+        print(" ")
+        print("... adding random points to the sample ...")
+
+        #-- 
+        n_clusters_list_random = []  # list to store cluster numbers 
+        ari_global_results = []
+        jaccard_individual_results = {k: [] for k in n_clusters_original_bic}
+
+        for i in range(nsim):
+            #-- Generate random points (the seed must be different in each iteration)
+            np.random.seed(i) # use the loop index as the seed to ensure randomness
+            number = int((len(X)*percent_add)) # add a random sample equivalent to percent_add% of the original sample
+
+            random_points = np.random.uniform(low=X.min(axis=0), 
+                                             high=X.max(axis=0), 
+                                             size=(number, 2))
+
+            #-- combining samples
+            X_random = np.vstack([X, random_points])
+
+            #-- Performing the clustering algothims DBSCAN or HDBSCAN in random sample
+            if method == 'dbscan':
+                cluster_random = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_random)
+            elif method == 'hdbscan':
+                cluster_random = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_random)   
+
+            #-- putting a label to each galaxy in the random sample. This label allows us to assign each galaxy to a substructure
+            label_cluster_bic_random = cluster_random.labels_ # the label_dbscan_bic_random is the label of each odentified substructure in the new sample. This parameter is a numpy.ndarray
+
+            #-- estimating number of clusters
+            n_clusters_random = len(set(label_cluster_bic_random)) - (1 if -1 in label_cluster_bic_random else 0)
+            n_clusters_list_random.append(n_clusters_random)
+
+            #-- preparing the labels for comparison 
+            #-- selection of the labels for the first N initial points of X_random
+            labels_random_initial = label_cluster_bic_random[:len(X)]
+
+            #-- filter out noisy points for a purer stability comparison
+            #  --- creating a mask to include only the points that were NOT noisy in ANY of the runs
+            stable_mask = (label_cluster_bic != -1) & (labels_random_initial != -1)
+
+            if np.sum(stable_mask) < 2:
+                       
+                # Caso 1: No hay suficientes puntos estables para un cálculo significativo.
+                ari_global_results.append(np.nan)
+                for k in n_clusters_original_bic:
+                    jaccard_individual_results[k].append(np.nan)
+                continue # Ir a la siguiente iteración
+    
+                # Caso 2: Sí hay suficientes puntos estables (al menos 2).
+    
+            # A. Cálculo de la Estabilidad Global (ARI)
+            ari = adjusted_rand_score(label_cluster_bic[stable_mask], 
+                                      labels_random_initial[stable_mask])
+            ari_global_results.append(ari)
+    
+            # B. Cálculo de la Estabilidad Individual (Jaccard)
+            for k in n_clusters_original_bic:
+                A_inicial = (label_cluster_bic == k)
+                B_nueva = (labels_random_initial == k)
+        
+                A_stable_jaccard = A_inicial[stable_mask]
+                B_stable_jaccard = B_nueva[stable_mask]
+
+                # Lógica para evitar Jaccard con conjuntos vacíos, garantizando que siempre se añada un valor
+                if np.sum(A_stable_jaccard) == 0 and np.sum(B_stable_jaccard) == 0:
+                    jaccard = 1.0 
+                elif np.sum(A_stable_jaccard) == 0 or np.sum(B_stable_jaccard) == 0:
+                    jaccard = 0.0 
+                else:
+                    jaccard = jaccard_score(A_stable_jaccard, B_stable_jaccard, pos_label=1)
+            
+                jaccard_individual_results[k].append(jaccard) # <-- ¡Esta línea siempre se ejecuta ahora!
+
+        avg_n_clusters_random = np.mean(n_clusters_list_random)
+        std_n_clusters_random = np.std(n_clusters_list_random)
+
+        print(f"Number of groups adding {round(percent_add*100)}% of galaxies     : {avg_n_clusters_random:.0f}")
+        print(f"Standar deviation of the numeber of groups  : {round(std_n_clusters_random):.0f}")
+       
+        if ari_global_results:
+            mean_ari = np.mean(ari_global_results)
+            std_ari = np.std(ari_global_results)
+            print(f"mean ARI score adding {round(percent_add*100)}% of galaxies       : {mean_ari:.4f}")
+            print(f"Standard deviation of the ARI score         : {std_ari:.4f}")
+        print(" ")
+
+        # --- Assesing individual stability 
+        print("... assessing individual stability ...")
+        print("        --- Jaccard index ---")
+        results_df = pd.DataFrame(jaccard_individual_results)
+        summary = results_df.agg(['mean', 'std']).T
+        print(summary.to_string(float_format="%.4f"))
+        summary.columns = ['mean_add', 'std_add']
+    
+        print(" ")
+
+        # --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        # =============================================================== REMOVE RANDOM POINTS FROM THE SAMPLE ===============================================================
+
+        print("... removing random points from the sample ...")
+        #-- Remove points at random (Subsampling)
+        #-- stabillity removing points was added an November 26, 2025
+
+        sample_size = len(X)
+        removal_percentage = percent_rem # -- removing 20% of the sample
+        n_to_remove = int(sample_size * removal_percentage)
+
+        n_clusters_list_subsample = []
+        ari_global_results_subsample = []
+        jaccard_individual_results_subsample = {k: [] for k in n_clusters_original_bic}
+
+        for i in range(nsim):
+            #-- Generate random points (the seed must be different in each iteration)
+            np.random.seed(i) # use the loop index as the seed to ensure randomness
+            indices_to_keep = np.random.choice(sample_size, 
+                                             sample_size - n_to_remove, 
+                                             replace=False)
+
+            #-- Create the new subsampled sample
+            X_subsample = X[indices_to_keep]
+
+            #-- Performing the clustering algothims DBSCAN or HDBSCAN in random subsample
+            if method == 'dbscan':
+                cluster_subsample = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_subsample)
+            elif method == 'hdbscan':
+                cluster_subsample = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_subsample)   
+
+            #-- putting a label to each galaxy in the subsample. This label allows us to assign each galaxy to a substructure
+            label_cluster_bic_subsample = cluster_subsample.labels_ # the label_dbscan_bic_subsample is the label of each odentified substructure in the new sample. This parameter is a numpy.ndarray
+
+            #-- estimating number of clusters
+            n_clusters_subsample = len(set(label_cluster_bic_subsample)) - (1 if -1 in label_cluster_bic_subsample else 0)
+            n_clusters_list_subsample.append(n_clusters_subsample)
+
+            #-- project the subsample labels onto the initial sample
+            #-- create an array of labels the size of X, initialized to -1 (removed/noise)
+            labels_projected = np.full(len(X), -1, dtype=int)
+
+            #-- assign the new labels to the points that were retained
+            labels_projected[indices_to_keep] = label_cluster_bic_subsample # indices_to_keep stores the positions of the points that survived
+
+            #-- filter for a pure stability comparison
+            #-- filter to compare only the points that were assigned to a cluster (not noise)
+            #-- in the initial run and that survived the subsampling (are not -1 in the projection).
+            stable_sub_mask = (label_cluster_bic != -1) & (labels_projected != -1)
+
+            if np.sum(stable_sub_mask) < 2:
+                       
+            # Caso 1: No hay suficientes puntos estables para un cálculo significativo.
+                ari_global_results_subsample.append(np.nan)
+                for k in n_clusters_original_bic:
+                    jaccard_individual_results_subsample[k].append(np.nan)
+                continue # Ir a la siguiente iteración
+        
+            # A. Cálculo de la Estabilidad Global (ARI)
+            ari_subsample = adjusted_rand_score(labels_projected[stable_sub_mask], 
+                                        labels_random_initial[stable_sub_mask])
+            ari_global_results_subsample.append(ari_subsample)
+
+            # B. Cálculo de la Estabilidad Individual (Jaccard)
+            for k in n_clusters_original_bic:
+                A_initial = (label_cluster_bic == k)
+                B_projected = (labels_projected== k)
+        
+                A_stable_jaccard_sub = A_initial[stable_sub_mask]
+                B_stable_jaccard_sub = B_projected[stable_sub_mask]
+
+                # Lógica para evitar Jaccard con conjuntos vacíos, garantizando que siempre se añada un valor
+                if np.sum(A_stable_jaccard_sub) == 0 and np.sum(B_stable_jaccard_sub) == 0:
+                    jaccard_subsample = 1.0 
+                elif np.sum(A_stable_jaccard_sub) == 0 or np.sum(B_stable_jaccard_sub) == 0:
+                    jaccard_subsample = 0.0 
+                else:
+                    jaccard_subsample = jaccard_score(A_stable_jaccard_sub, B_stable_jaccard_sub, pos_label=1)
+            
+                jaccard_individual_results_subsample[k].append(jaccard_subsample) # <-- ¡Esta línea siempre se ejecuta ahora!
+
+        avg_n_clusters_subsample = np.mean(n_clusters_list_subsample)
+        std_n_clusters_subsample = np.std(n_clusters_list_subsample)
+
+        print(f"Number of groups removing {round(percent_rem*100)}% of galaxies   : {avg_n_clusters_subsample:.0f}")
+        print(f"Standar deviation of the numeber of groups  : {round(std_n_clusters_subsample):.0f}")
+        
+        if ari_global_results_subsample:
+            mean_ari_sub = np.mean(ari_global_results_subsample)
+            std_ari_sub = np.std(ari_global_results_subsample)
+            print(f"mean ARI score removing {round(percent_rem*100)}% of galaxies     : {mean_ari_sub:.4f}")
+            print(f"Standard deviation of the ARI score         : {std_ari_sub:.4f}")
+        print(" ")
+
+        # --- Assesing individual stability 
+        print("... assessing individual stability ...")
+        print("        --- Jaccard index ---")
+        results_df_sub = pd.DataFrame(jaccard_individual_results_subsample)
+        summary_sub = results_df_sub.agg(['mean', 'std']).T
+        print(summary_sub.to_string(float_format="%.4f"))
+        summary_sub.columns = ['mean_sub', 'std_sub']
+
+        print(" ")
+
+        # --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        # ===================================================================== BOOTSTRAP IMPLEMENTATION =====================================================================
+
+        print("... Performing ", nsim, " Bootstrap iterations ...")
+        print("...")
+
+        N = len(X) # size of sample
+        bootstrap_labels = [] # list to store labels found by bootstrap
+        n_clusters_list = []  # list to store cluster numbers 
+        ari_scores = []       # list to store the ARI's score 
+
+        for i in range(nsim):
+            #-- Sampling with replacement (Bootstrap)
+            sample_indices = np.random.choice(N, size=N, replace=True)
+            X_bootstrap = X[sample_indices]
+
+            #-- Apply DBSCAN to the Bootstrap sample
+            if method == 'dbscan':
+                cluster_bootstrap = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_bootstrap)
+            elif method == 'hdbscan':
+                cluster_bootstrap = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_bootstrap)  
+
+            labels_boot = cluster_bootstrap.labels_
+    
+            #-- estimating number of clusters
+            n_clusters_boot = len(set(labels_boot)) - (1 if -1 in labels_boot else 0)
+            n_clusters_list.append(n_clusters_boot)
+
+            #-- mapping labels to compute ARI index
+            labels_boot_mapped = np.full(N, -2, dtype=int)
+            labels_boot_mapped[sample_indices] = labels_boot
+
+            bootstrap_labels.append(labels_boot_mapped)
+    
+            #-- Meassuring ARI index
+            #--- ARI index is only estimating for the galaxies that were sampled
+            #--- First we compare the original labels of those galaxies that were sampled with the bootstrap labels found
+    
+            #-- selecting original labels for the sampled galaxies 
+            labels_original_subset = label_cluster_bic[sample_indices]
+    
+            #--Bootstrap labels found for those galaxies that were sampled 
+            labels_boot_subset = labels_boot
+  
+            #-- importing ARI index to compare the similarity between two cluster assignments
+            ari_score = adjusted_rand_score(labels_original_subset, labels_boot_subset)
+            ari_scores.append(ari_score)
+        
+        #-- estimating mean and standard deviation of the groups found in the original sample   
+        avg_n_clusters = np.mean(n_clusters_list)
+        std_n_clusters = np.std(n_clusters_list)
+
+        print(f"Number of groups in Bootstrap               : {avg_n_clusters:.0f}")
+        print(f"Standar deviation of the numeber of groups  : {round(std_n_clusters):.0f}")
+
+        #-- estimating mean and standard deviation of the ARI index   
+        avg_ari = np.mean(ari_scores)
+        std_ari = np.std(ari_scores)
+
+        print(f"mean ARI score for the Bootstrap            : {avg_ari:.4f}")
+        print(f"Standard deviation of the ARI score         : {std_ari:.4f}")
+        print(" ")
+
+
+        # --- Assesing individual stability 
+        print("... assessing individual stability ...")
+        print("...")
+
+        co_occurrence_matrix = np.zeros((N, N))
+
+        for labels in bootstrap_labels:
+            #-- only points that were sampled (label != -2) are considered
+            sampled_indices = np.where(labels != -2)[0]
+    
+            #-- create a temporal co-classification matrix for this iteration
+            temp_co_matrix = np.zeros((N, N))
+    
+            #-- iterates over all pairs of sampled points
+            for i in sampled_indices:
+                for j in sampled_indices:
+                    if i <= j: # Only the upper half is calculated for symmetry
+                    # If both points have the same cluster label (including noise -1)
+                    # and both were sampled (label != -2), increment the counter.
+                        if labels[i] == labels[j] and labels[i] != -2:
+                            temp_co_matrix[i, j] = 1
+                        if i != j:
+                            temp_co_matrix[j, i] = 1
+
+            co_occurrence_matrix += temp_co_matrix
+
+        #-- normalization and Stability Visualization
+        #-- divide by the number of iterations to obtain the co-occurrence probability
+        co_occurrence_probability = co_occurrence_matrix / nsim
+
+        labels_original = label_cluster_bic # label in the original iteration 
+        unique_clusters = set(labels_original)
+        stability_results = {}
+
+        for cluster_label in unique_clusters:
+            if cluster_label == -1:
+                #-- exclude "noise" points
+                continue
+
+            #-- find the indices of the points that belong to this cluster
+            cluster_indices = np.where(labels_original == cluster_label)[0]
+
+            #-- if the cluster has fewer than 2 points, co-occurrence cannot be calculated
+            if len(cluster_indices) < 2:
+                stability_results[cluster_label] = 0.0
+                continue
+
+            #-- extract the co-occurrence submatrix for this cluster
+            submatrix = co_occurrence_probability[np.ix_(cluster_indices, cluster_indices)]
+
+            #-- estimate the average co-occurrence:
+            #--- Sum all the elements of the submatrix
+            #--- Subtract the diagonal (the co-occurrence of a point with itself is always 1)
+            #--- Divide by the total number of pairs (N * (N - 1))
+    
+            N_k = len(cluster_indices)
+            sum_co_occurrence = np.sum(submatrix)
+    
+            #-- subtract the diagonal (N_k)
+            total_co_occurrence_pairs = sum_co_occurrence - N_k
+
+            #-- total number of possible unique pairs within the cluster (excluding the diagonal)
+            num_pairs = N_k * (N_k - 1)
+    
+            if num_pairs > 0:
+                avg_co_occurrence = total_co_occurrence_pairs / num_pairs
+            else:
+                avg_co_occurrence = 0.0
+
+            stability_results[cluster_label] = avg_co_occurrence
+
+        results_boot = pd.DataFrame({k: [v] for k, v in stability_results.items()})
+        summary_boot = results_boot.agg(['mean']).T
+        print(summary_boot.to_string(float_format="%.4f"))
+        summary_boot.columns = ['mean_boot']
+
+
+        # --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+        print(" ")
+        print("-- ending LAGASU dbscan stability--")
+
+        join_summary = pd.concat([summary, summary_sub, summary_boot], axis=1)
+        join_summary_final = join_summary.reset_index().rename(columns={'index': 'groups'})
+        
+        # Añadir una columna para identificar el corte de redshift (ii)
+        join_summary_final['redshift_cut'] = ii 
+        all_summary_results.append(join_summary_final)
+
+        # --- CORRECCIÓN 3C: Concatenar todos los resultados y guardar (Diciembre 09, 2025) ---
+        if all_summary_results:
+            final_dataframe = pd.concat(all_summary_results, ignore_index=True)
+            final_dataframe.to_csv(save_path, float_format="%.4f", index=False)
+            print(" ")
+            print(f"Stability results successfully saved in : {save_path}" )
+        else:
+            print(" ")
+            print("WARNING: No stable groups were found in any redshift cut. No file saved.")
+
+    return
 
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
@@ -2773,116 +2889,3 @@ def lagasu_position(id_galaxy, ra_galaxy, dec_galaxy, range_cuts, galaxy_separat
         
             p_pos = p_pos + tam_groups[ii]
     # -- END OF LOOP --
-
-    #-- Here the correlative is assembled eliminating -1
-    p3 = [] # p3 is an array with the label of all idenitified substructures
-
-    #--- START OF LOOP ---
-    for j in range(0,len(p)):
-
-        if p[j] != -1:
-            p3 = np.append(p3, j)
-
-    for l in range(0,len(p3)):
-
-        p3[l] = l
-    # -- END OF LOOP --
-
-    #-- printing the total number of substructures in the cluster
-#    print("number of substructures =", len(p3))
-
-    #-- initializing the variables
-    p_pos = 0
-    correlative = 0
-
-    #-- Here the array p2 is assembled, which is an array with the label of all identified substructures plus noise
-    #--- START OF LOOP ---
-    for ii in range(0,len(tam_groups)):
-
-        for e in range(0,tam_groups[ii]):
-
-            if(e==0 and ii==0):
-                p2 = p[0]
-
-                if(p[0] != -1):
-                    correlative +=1
-
-            elif(p[p_pos+e]== -1):
-                p2 = np.append(p2,-1)
-
-            else:
-                p2 = np.append(p2,correlative)
-                correlative +=1
-
-        p_pos = p_pos + tam_groups[ii]
-    # -- END OF LOOP --
-
-    #-- This implementation allows us to consider the case of a little sample in which all galaxies are assign to a single substructure 
-    if type(groups_pos) == int:
-        groups_pos = np.array([groups_pos])
-    
-    else:
-        groups_pos = groups_pos
-#========================================================
-    #-- This loop allows us to assign a label from 0 to n lo each substructures plus noise which is labelled with -1
-    #--- START OF LOOP ---
-
-    #-- selecting the labels of the groups found by DBSCAN 
-    final_groups = np.unique(labels_dbscan_bic)
-
-    if  len(final_groups) == 1: # in this case none of galaxies are part of a subhalo
-
-        labels_dbscan_corr = labels_dbscan_bic 
-    
-    else: 
-        for k in range(0,len(labels_dbscan_bic)):
-            aux = 0
-            
-            if(k == 0):
-                while( labels_dbscan_bic[k] != p[groups_pos[sorted_labels_bic[k]]+aux]):
-                    aux +=1
-                labels_dbscan_corr = p2[groups_pos[sorted_labels_bic[k]]+aux]
-
-            else:
-                while( labels_dbscan_bic[k] != p[groups_pos[sorted_labels_bic[k]]+aux]):
-                    aux +=1
-                labels_dbscan_corr = np.append(labels_dbscan_corr,p2[groups_pos[sorted_labels_bic[k]]+aux])
-    # -- END OF LOOP --
-
-    for ii in range(0,n_cuts_bic):
-
-        n_gmm_bic_groups = np.where(labels_bic == ii)[0]
-
-        id_gal_out = id_galaxy[n_gmm_bic_groups]
-        ra_out = ra_galaxy[n_gmm_bic_groups]
-        dec_out = dec_galaxy[n_gmm_bic_groups]
-        gmm_labels = labels_bic[n_gmm_bic_groups]
-        labels_gmm_dbscan = labels_dbscan_bic[n_gmm_bic_groups]
-
-        if ii != 0:
-            id_substructures = np.append(id_substructures,id_gal_out)
-            ra_substructures = np.append(ra_substructures,ra_out)
-            dec_substructures = np.append(dec_substructures, dec_out)
-            gmm_substructures = np.append(gmm_substructures, gmm_labels)
-            gmm_dbscan_substructures = np.append(gmm_dbscan_substructures, labels_gmm_dbscan)
-            
-        else:              #-- process of the first iteration: defining variables
-            id_substructures = id_gal_out
-            ra_substructures = ra_out
-            dec_substructures = dec_out
-            gmm_substructures = gmm_labels
-            gmm_dbscan_substructures = labels_gmm_dbscan
-
-    # -- renaming the substructures identified by using lagasu in order to identify the principal halo and separate it from the substructures
-    # if label == -1 the galaxy is only part of the principal halo. If galaxy is != -1 the galaxy is in a substructure
-
-    #-- building matrix with output quantities
-    lagasu_parameters = np.array([id_substructures, ra_substructures, dec_substructures, gmm_substructures, gmm_dbscan_substructures, labels_dbscan_corr], dtype=object)
-
-    print("-- ending lagasu_position --")
-
-    #-- returning output quantity
-    return lagasu_parameters
-
-#####################################################################################################################################################################################
-#####################################################################################################################################################################################
