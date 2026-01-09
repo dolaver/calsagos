@@ -233,7 +233,7 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
 
         if metric_distance == 'euclidean':
             X = np.array([ra, dec]).T
-        if metric_distance == 'haversine': 
+        elif metric_distance == 'haversine': 
             ra_rad = np.radians(ra)
             dec_rad = np.radians(dec)
             X = np.array([ra_rad, dec_rad]).T
