@@ -18,6 +18,7 @@ python3 setup.py install
 - UTILS, LAGASU and test.py were updated by D. E. Olave-Rojas on June 02, 2023 to improve the correction of the label of substructures
 - UTILS and LAGASU and were updated by D. E. Olave-Rojas on November 10, 2025 to include metrics "haversine" and "euclidean" and method "dbscan" and "hdbscan"
 - UTILS and LAGASU were updated by D. E. Olave-Rojas on December 05, 2025 to include a stability test in the identification of substructures using lagasu
+- LAGASU was updated by D. E. Olave-Rojas on January 21, 2026 to correct some bugs
 
 ## Example Usage
 
