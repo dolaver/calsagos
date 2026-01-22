@@ -10,8 +10,8 @@
 #-------------------------------------------------------------------
 # created by    : D. E. Olave-Rojas & D. A. Olave-Rojas
 # email         : daniela.olave@utalca.cl
-# version       : 0.1.6
-# update        : December 05, 2025
+# version       : 0.1.7
+# update        : January 21, 2026
 # maintainer    : D. E. Olave-Rojas 
 #-------------------------------------------------------------------
 
@@ -30,7 +30,7 @@ from calsagos import utils
 
 __author__ = 'D. E. Olave-Rojas & D. A. Olave-Rojas'
 __email__ = 'daniela.olave@utalca.cl'
-__version__ = '0.1.6'
+__version__ = '0.1.7'
 __maintainer__ = "D. E. Olave-Rojas"
 
 #####################################################################################################################################################################################
@@ -43,7 +43,7 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
 
     This function was developed by D. E. Olave-Rojas and 
     D. A. Olave-Rojas (07/05/2021) and was updated by 
-    D. E. Olave-Rojas (06/17/2024)
+    D. E. Olave-Rojas (01/21/2026)
 
     The input of LAGASU can be a sample of galaxies in a cluster 
     of a sample of galaxies previously selected as potential 
@@ -155,6 +155,11 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
     else:
         print("Redshift array is OK")
 
+    if metric_distance == 'haversine':
+        galaxy_separation = np.radians(galaxy_separation)
+    else:
+        galaxy_separation = galaxy_separation
+
     #-- Gaussian Mixture Models (GMM) divides the sample in ranges of redshift in order to consider the volume of the cluster
     #-- The divissión is perform without an arbitrary number of cuts in the redshift distribution and the number of cuts are in a range
     #-- The divissión in the redshift space is perform without an arbitrary number of cuts by using the Bayesian Information Criterion (BIC), 
@@ -201,7 +206,6 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
     bic = np.array(bic)
     clf = best_gmm
     print("Best model GMM       :", best_gmm)
-#    bars = []
     
     #-- defining the parameters of the best fit
     n_cuts_bic = clf.n_components # number of cuts do by the algorithms 
@@ -231,32 +235,37 @@ def lagasu(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, galaxy
         #-- creating a transposed array with the poition of galaxies to be used as input in the DBSCAN implementation
         #-- metric implementation was added an June 17, 2024
 
-        if metric_distance == 'euclidean':
-            X = np.array([ra, dec]).T
-        elif metric_distance == 'haversine': 
+        if metric_distance == 'haversine': 
             ra_rad = np.radians(ra)
             dec_rad = np.radians(dec)
             X = np.array([ra_rad, dec_rad]).T
         else:
+            if metric_distance != 'euclidean':
+                print(f"WARNING: metric_distance '{metric_distance}' is not recognized. 'euclidean' will be used as default.")
             #-- CORRECTION: handling unrecognized metrics
             #-- this correction was done on December 05, 2025
-            X = np.array([ra, dec]).T
             metric_distance = 'euclidean'
-            raise ValueError("Metric distance must be 'euclidean' or 'haversine' -- 'euclidean' metrics is used")
+            X = np.array([ra, dec]).T
         
         #-- Performing the clustering algothims DBSCAN or HDBSCAN
-        if method == 'dbscan':
-            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-        elif method == 'hdbscan':
+        if method == 'hdbscan':
             cluster = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)   
+            
         else:
-            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-            #-- handling unrecognized method
-            #-- this correction was done on December 05, 2025
-            raise ValueError("Clustering method must be 'dbscan' or 'hdbscan' -- 'dbscan' method is used")            
+            if method != 'dbscan':
+                print(f"WARNING: method '{method}'  is not recognized. 'dbscan' will be used as default.")
+            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)         
      
         #-- putting a label to each galaxy. This label allows us to assign each galaxy to a substructure
         label_cluster_bic = cluster.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
+
+        unique_ids, counts = np.unique(label_cluster_bic, return_counts=True)
+
+        for group_id, count in zip(unique_ids, counts):
+            # Si el grupo no es ruido (-1) y es menor al mínimo deseado
+            if group_id != -1 and count < n_galaxies:
+                # Convertimos a esas galaxias en ruido (-1)
+                label_cluster_bic[label_cluster_bic == group_id] = -1
 
         #-- selecting the labels of the groups found by DBSCAN in each redshift cut
         groups = np.unique(label_cluster_bic) # number of groups in each redshift cut
@@ -518,6 +527,11 @@ def lagasu_supercluster(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range
     else:
         print("Redshift array is OK")
 
+    if metric_distance == 'haversine':
+        galaxy_separation = np.radians(galaxy_separation)
+    else:
+        galaxy_separation = galaxy_separation
+
     print("  ")
     print(f"... starting GMM ...")
 
@@ -598,32 +612,37 @@ def lagasu_supercluster(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range
         #-- creating a transposed array with the poition of galaxies to be used as input in the DBSCAN implementation
         #-- metric implementation was added an June 17, 2024
 
-        if metric_distance == 'euclidean':
-            X = np.array([ra, dec]).T
         if metric_distance == 'haversine': 
             ra_rad = np.radians(ra)
             dec_rad = np.radians(dec)
             X = np.array([ra_rad, dec_rad]).T
         else:
+            if metric_distance != 'euclidean':
+                print(f"WARNING: metric_distance '{metric_distance}' is not recognized. 'euclidean' will be used as default.")
             #-- CORRECTION: handling unrecognized metrics
             #-- this correction was done on December 05, 2025
-            X = np.array([ra, dec]).T
             metric_distance = 'euclidean'
-            raise ValueError("Metric distance must be 'euclidean' or 'haversine' -- 'euclidean' metrics is used")
+            X = np.array([ra, dec]).T
         
         #-- Performing the clustering algothims DBSCAN or HDBSCAN
-        if method == 'dbscan':
-            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-        elif method == 'hdbscan':
+        if method == 'hdbscan':
             cluster = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)   
+            
         else:
-            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-            #-- handling unrecognized method
-            #-- this correction was done on December 05, 2025
-            raise ValueError("Clustering method must be 'dbscan' or 'hdbscan' -- 'dbscan' method is used")    
+            if method != 'dbscan':
+                print(f"WARNING: method '{method}'  is not recognized. 'dbscan' will be used as default.")
+            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)       
             
         #-- putting a label to each galaxy. This label allows us to assign each galaxy to a substructure
         label_cluster_bic = cluster.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
+
+        unique_ids, counts = np.unique(label_cluster_bic, return_counts=True)
+
+        for group_id, count in zip(unique_ids, counts):
+            # Si el grupo no es ruido (-1) y es menor al mínimo deseado
+            if group_id != -1 and count < n_galaxies:
+                # Convertimos a esas galaxias en ruido (-1)
+                label_cluster_bic[label_cluster_bic == group_id] = -1
 
         #-- selecting the labels of the groups found by DBSCAN in each redshift cut
         groups = np.unique(label_cluster_bic) # number of groups in each redshift cut
@@ -867,6 +886,11 @@ def lagasu_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, ga
     else:
         pass
 
+    if metric_distance == 'haversine':
+        galaxy_separation = np.radians(galaxy_separation)
+    else:
+        galaxy_separation = galaxy_separation
+
     #-- Gaussian Mixture Models (GMM) divides the sample in ranges of redshift in order to consider the volume of the cluster
     #-- The divissión is perform without an arbitrary number of cuts in the redshift distribution and the number of cuts are in a range
     #-- The divissión in the redshift space is perform without an arbitrary number of cuts by using the Bayesian Information Criterion (BIC), 
@@ -940,32 +964,37 @@ def lagasu_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, ga
         #-- creating a transposed array with the poition of galaxies to be used as input in the DBSCAN implementation
         #-- metric implementation was added an June 17, 2024
 
-        if metric_distance == 'euclidean':
-            X = np.array([ra, dec]).T
-        elif metric_distance == 'haversine': 
+        if metric_distance == 'haversine': 
             ra_rad = np.radians(ra)
             dec_rad = np.radians(dec)
             X = np.array([ra_rad, dec_rad]).T
         else:
+            if metric_distance != 'euclidean':
+                print(f"WARNING: metric_distance '{metric_distance}' is not recognized. 'euclidean' will be used as default.")
             #-- CORRECTION: handling unrecognized metrics
             #-- this correction was done on December 05, 2025
-            X = np.array([ra, dec]).T
             metric_distance = 'euclidean'
-            raise ValueError("Metric distance must be 'euclidean' or 'haversine' -- 'euclidean' metrics is used")
+            X = np.array([ra, dec]).T
         
         #-- Performing the clustering algothims DBSCAN or HDBSCAN
-        if method == 'dbscan':
-            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-        elif method == 'hdbscan':
+        if method == 'hdbscan':
             cluster = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)   
+            
         else:
-            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-            #-- handling unrecognized method
-            #-- this correction was done on December 05, 2025
-            raise ValueError("Clustering method must be 'dbscan' or 'hdbscan' -- 'dbscan' method is used") 
+            if method != 'dbscan':
+                print(f"WARNING: method '{method}'  is not recognized. 'dbscan' will be used as default.")
+            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)      
         
         #-- putting a label to each galaxy. This label allows us to assign each galaxy to a substructure
         label_cluster_bic = cluster.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
+
+        unique_ids, counts = np.unique(label_cluster_bic, return_counts=True)
+
+        for group_id, count in zip(unique_ids, counts):
+            # Si el grupo no es ruido (-1) y es menor al mínimo deseado
+            if group_id != -1 and count < n_galaxies:
+                # Convertimos a esas galaxias en ruido (-1)
+                label_cluster_bic[label_cluster_bic == group_id] = -1
 
         #-- selecting the labels of the groups found by DBSCAN in each redshift cut
         groups = np.unique(label_cluster_bic) # number of groups in each redshift cut
@@ -1205,6 +1234,11 @@ def lagasu_subsampling_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, ra
     else:
         pass
 
+    if metric_distance == 'haversine':
+        galaxy_separation = np.radians(galaxy_separation)
+    else:
+        galaxy_separation = galaxy_separation
+
     #-- Gaussian Mixture Models (GMM) divides the sample in ranges of redshift in order to consider the volume of the cluster
     #-- The divissión is perform without an arbitrary number of cuts in the redshift distribution and the number of cuts are in a range
     #-- The divissión in the redshift space is perform without an arbitrary number of cuts by using the Bayesian Information Criterion (BIC), 
@@ -1304,31 +1338,37 @@ def lagasu_subsampling_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, ra
             #-- creating a transposed array with the poition of galaxies to be used as input in the DBSCAN implementation
             #-- metric implementation was added an June 17, 2024
 
-            if metric_distance == 'euclidean':
-                X = np.array([ra, dec]).T
-            elif metric_distance == 'haversine': 
+            if metric_distance == 'haversine': 
                 ra_rad = np.radians(ra)
                 dec_rad = np.radians(dec)
                 X = np.array([ra_rad, dec_rad]).T
             else:
+                if metric_distance != 'euclidean':
+                    print(f"WARNING: metric_distance '{metric_distance}' is not recognized. 'euclidean' will be used as default.")
                 #-- CORRECTION: handling unrecognized metrics
                 #-- this correction was done on December 05, 2025
+                metric_distance = 'euclidean'
                 X = np.array([ra, dec]).T
-                raise ValueError("Metric distance must be 'euclidean' or 'haversine' -- 'euclidean' metrics is used")
-        
+            
             #-- Performing the clustering algothims DBSCAN or HDBSCAN
-            if method == 'dbscan':
-                cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-            elif method == 'hdbscan':
+            if method == 'hdbscan':
                 cluster = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)   
+                
             else:
-                cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-                #-- handling unrecognized method
-                #-- this correction was done on December 05, 2025
-                raise ValueError("Clustering method must be 'dbscan' or 'hdbscan' -- 'dbscan' method is used")
+                if method != 'dbscan':
+                    print(f"WARNING: method '{method}'  is not recognized. 'dbscan' will be used as default.")
+                cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)      
         
             #-- putting a label to each galaxy. This label allows us to assign each galaxy to a substructure
             label_cluster_bic = cluster.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
+
+            unique_ids, counts = np.unique(label_cluster_bic, return_counts=True)
+
+            for group_id, count in zip(unique_ids, counts):
+                # Si el grupo no es ruido (-1) y es menor al mínimo deseado
+                if group_id != -1 and count < n_galaxies:
+                    # Convertimos a esas galaxias en ruido (-1)
+                    label_cluster_bic[label_cluster_bic == group_id] = -1
 
             #-- selecting the labels of the groups found by DBSCAN in each redshift cut
             groups = np.unique(label_cluster_bic) # number of groups in each redshift cut
@@ -1375,28 +1415,25 @@ def lagasu_subsampling_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, ra
             tam_groups = np.array([tam_groups])
 
         #--- START OF LOOP ---
-        for ii in range(0,len(tam_groups)):
+        for ii in range(0, len(tam_groups)):
 
-            if (len(tam_groups)==1):
-
-                groups_pos = 0
-
+            if len(tam_groups) == 1:
+                groups_pos = np.array([0]) # Mantener consistencia como array
             else: 
-
-                for e in range(0,tam_groups[ii]):
-
+                for e in range(0, tam_groups[ii]):
                     #-- only if p[p_pos+e] is equal to the first element of the current group
                     if (len(first_element_groups) > ii and p[p_pos+e] == first_element_groups[ii]):
                         if ii == 0:
-                            groups_pos = 0
-                        else:
-                            if groups_pos == []:
-                                groups_pos = np.array(p_pos + e)
+                            groups_pos = np.array([0])
+                        else: 
+                            # Corrección: Verificar si es una lista vacía o un entero antes de append
+                            if isinstance(groups_pos, (list, int)) and (groups_pos == 0 or groups_pos == []):
+                                groups_pos = np.array([p_pos + e]) 
                             else:
                                 groups_pos = np.append(groups_pos, (p_pos + e))
-        
+
                 p_pos = p_pos + tam_groups[ii]
-            # -- END OF LOOP --
+        # -- END OF LOOP --
 
         #-- Here the correlative is assembled eliminating -1
         p3 = np.array([], dtype=int) # p3 is an array with the label of all idenitified substructures
@@ -1517,7 +1554,6 @@ def lagasu_subsampling_raw(id_galaxy, ra_galaxy, dec_galaxy, redshift_galaxy, ra
 
     #-- returning output quantity
     return lagasu_parameters
-
 
 #####################################################################################################################################################################################
 #####################################################################################################################################################################################
@@ -2159,7 +2195,7 @@ def lagasu_dbscan_stability(ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, 
     # -- estimating central redshift of the distribution
     good_z = np.where((redshift_galaxy != 99) & (redshift_galaxy > 0))[0]
     redshift_cluster = biweight_location(redshift_galaxy[good_z])
-        
+
     #-- creating a boolean mask. It is an array with True/False and True corresponds to the old value
     anomalous_mask = (
         ((redshift_galaxy > -99.) & (redshift_galaxy <= 0.)) | 
@@ -2173,6 +2209,14 @@ def lagasu_dbscan_stability(ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, 
         print("... replacing anomalous values with the redshift cluster value ...")
         #-- appliyinh mask 
         redshift_galaxy[anomalous_mask] = redshift_cluster
+    else:
+        print("Redshift array is OK")
+
+
+    if metric_distance == 'haversine':
+        galaxy_separation = np.radians(galaxy_separation)
+    else:
+        galaxy_separation = galaxy_separation
 
     #-- Gaussian Mixture Models (GMM) divides the sample in ranges of redshift in order to consider the volume of the cluster
     #-- The divissión is perform without an arbitrary number of cuts in the redshift distribution and the number of cuts are in a range
@@ -2254,32 +2298,37 @@ def lagasu_dbscan_stability(ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, 
         #-- creating a transposed array with the poition of galaxies to be used as input in the DBSCAN implementation
         #-- metric implementation was added an June 17, 2024
 
-        if metric_distance == 'euclidean':
-            X = np.array([ra, dec]).T
-        elif metric_distance == 'haversine': 
+        if metric_distance == 'haversine': 
             ra_rad = np.radians(ra)
             dec_rad = np.radians(dec)
             X = np.array([ra_rad, dec_rad]).T
         else:
+            if metric_distance != 'euclidean':
+                print(f"WARNING: metric_distance '{metric_distance}' is not recognized. 'euclidean' will be used as default.")
             #-- CORRECTION: handling unrecognized metrics
             #-- this correction was done on December 05, 2025
-            X = np.array([ra, dec]).T
             metric_distance = 'euclidean'
-            raise ValueError("Metric distance must be 'euclidean' or 'haversine' -- 'euclidean' metrics is used")
-    
+            X = np.array([ra, dec]).T
+        
         #-- Performing the clustering algothims DBSCAN or HDBSCAN
-        if method == 'dbscan':
-            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-        elif method == 'hdbscan':
+        if method == 'hdbscan':
             cluster = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)   
+            
         else:
+            if method != 'dbscan':
+                print(f"WARNING: method '{method}'  is not recognized. 'dbscan' will be used as default.")
             cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-            #-- handling unrecognized method
-            #-- this correction was done on December 05, 2025
-            raise ValueError("Clustering method must be 'dbscan' or 'hdbscan' -- 'dbscan' method is used")    
-    
+
         #-- putting a label to each galaxy. This label allows us to assign each galaxy to a substructure
         label_cluster_bic = cluster.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
+
+        unique_ids, counts = np.unique(label_cluster_bic, return_counts=True)
+
+        for group_id, count in zip(unique_ids, counts):
+            # Si el grupo no es ruido (-1) y es menor al mínimo deseado
+            if group_id != -1 and count < n_galaxies:
+                # Convertimos a esas galaxias en ruido (-1)
+                label_cluster_bic[label_cluster_bic == group_id] = -1
 
         #-- counting the number of groups in the random sample
         n_clusters_original_bic = [c for c in np.unique(label_cluster_bic) if c != -1]
@@ -2315,14 +2364,25 @@ def lagasu_dbscan_stability(ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, 
             X_random = np.vstack([X, random_points])
 
             #-- Performing the clustering algothims DBSCAN or HDBSCAN in random sample
-            if method == 'dbscan':
-                cluster_random = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_random)
-            elif method == 'hdbscan':
+            if method == 'hdbscan':
                 cluster_random = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_random)   
+                
+            else:
+                if method != 'dbscan':
+                    print(f"WARNING: method '{method}'  is not recognized. 'dbscan' will be used as default.")
+                cluster_random = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_random)
 
             #-- putting a label to each galaxy in the random sample. This label allows us to assign each galaxy to a substructure
             label_cluster_bic_random = cluster_random.labels_ # the label_dbscan_bic_random is the label of each odentified substructure in the new sample. This parameter is a numpy.ndarray
 
+            unique_ids_random, counts_random = np.unique(label_cluster_bic_random, return_counts=True)
+
+            for group_id_random, count_random in zip(unique_ids_random, counts_random):
+                # Si el grupo no es ruido (-1) y es menor al mínimo deseado
+                if group_id_random != -1 and count_random < n_galaxies:
+                    # Convertimos a esas galaxias en ruido (-1)
+                    label_cluster_bic_random[label_cluster_bic_random == group_id_random] = -1
+                    
             #-- estimating number of clusters
             n_clusters_random = len(set(label_cluster_bic_random)) - (1 if -1 in label_cluster_bic_random else 0)
             n_clusters_list_random.append(n_clusters_random)
@@ -2417,13 +2477,24 @@ def lagasu_dbscan_stability(ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, 
             X_subsample = X[indices_to_keep]
 
             #-- Performing the clustering algothims DBSCAN or HDBSCAN in random subsample
-            if method == 'dbscan':
-                cluster_subsample = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_subsample)
-            elif method == 'hdbscan':
+            if method == 'hdbscan':
                 cluster_subsample = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_subsample)   
+                
+            else:
+                if method != 'dbscan':
+                    print(f"WARNING: method '{method}'  is not recognized. 'dbscan' will be used as default.")
+                cluster_subsample = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_subsample)  
 
             #-- putting a label to each galaxy in the subsample. This label allows us to assign each galaxy to a substructure
             label_cluster_bic_subsample = cluster_subsample.labels_ # the label_dbscan_bic_subsample is the label of each odentified substructure in the new sample. This parameter is a numpy.ndarray
+
+            unique_ids_subsample, counts_subsample = np.unique(label_cluster_bic_subsample, return_counts=True)
+
+            for group_id_subsample, count_subsample in zip(unique_ids_subsample, counts_subsample):
+                # Si el grupo no es ruido (-1) y es menor al mínimo deseado
+                if group_id_subsample != -1 and count_subsample < n_galaxies:
+                    # Convertimos a esas galaxias en ruido (-1)
+                    label_cluster_bic_subsample[label_cluster_bic_subsample == group_id_subsample] = -1
 
             #-- estimating number of clusters
             n_clusters_subsample = len(set(label_cluster_bic_subsample)) - (1 if -1 in label_cluster_bic_subsample else 0)
@@ -2512,10 +2583,13 @@ def lagasu_dbscan_stability(ra_galaxy, dec_galaxy, redshift_galaxy, range_cuts, 
             X_bootstrap = X[sample_indices]
 
             #-- Apply DBSCAN to the Bootstrap sample
-            if method == 'dbscan':
-                cluster_bootstrap = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_bootstrap)
-            elif method == 'hdbscan':
-                cluster_bootstrap = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_bootstrap)  
+            if method == 'hdbscan':
+                cluster_bootstrap = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_bootstrap)   
+                
+            else:
+                if method != 'dbscan':
+                    print(f"WARNING: method '{method}'  is not recognized. 'dbscan' will be used as default.")
+                cluster_bootstrap = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X_bootstrap)  
 
             labels_boot = cluster_bootstrap.labels_
     
@@ -2737,6 +2811,11 @@ def lagasu_position(id_galaxy, ra_galaxy, dec_galaxy, range_cuts, galaxy_separat
     print("metric               :", metric_distance)
     print("method               :", method)
 
+    if metric_distance == 'haversine':
+        galaxy_separation = np.radians(galaxy_separation)
+    else:
+        galaxy_separation = galaxy_separation
+
     #-- Gaussian Mixture Models (GMM) divides the sample in ranges of redshift in order to consider the volume of the cluster
     #-- The divissión is perform without an arbitrary number of cuts in the redshift distribution and the number of cuts are in a range
     #-- The divissión in the redshift space is perform without an arbitrary number of cuts by using the Bayesian Information Criterion (BIC), 
@@ -2789,7 +2868,6 @@ def lagasu_position(id_galaxy, ra_galaxy, dec_galaxy, range_cuts, galaxy_separat
     # -- END OF LOOP --
     bic = np.array(bic)
     clf = best_gmm
-#    bars = []
 
     # -- printing time
     t_end = time.localtime()
@@ -2825,21 +2903,37 @@ def lagasu_position(id_galaxy, ra_galaxy, dec_galaxy, range_cuts, galaxy_separat
         #-- creating a transposed array with the poition of galaxies to be used as input in the DBSCAN implementation
         #-- metric implementation was added an June 17, 2024
 
-        if metric_distance == 'euclidean':
-            X = np.array([ra, dec]).T
         if metric_distance == 'haversine': 
             ra_rad = np.radians(ra)
             dec_rad = np.radians(dec)
             X = np.array([ra_rad, dec_rad]).T
-
+        else:
+            if metric_distance != 'euclidean':
+                print(f"WARNING: metric_distance '{metric_distance}' is not recognized. 'euclidean' will be used as default.")
+            #-- CORRECTION: handling unrecognized metrics
+            #-- this correction was done on December 05, 2025
+            metric_distance = 'euclidean'
+            X = np.array([ra, dec]).T
+        
         #-- Performing the clustering algothims DBSCAN or HDBSCAN
-        if method == 'dbscan':
-            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)
-        elif method == 'hdbscan':
+        if method == 'hdbscan':
             cluster = HDBSCAN(min_cluster_size=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)   
+            
+        else:
+            if method != 'dbscan':
+                print(f"WARNING: method '{method}'  is not recognized. 'dbscan' will be used as default.")
+            cluster = DBSCAN(eps=galaxy_separation, min_samples=n_galaxies, metric=metric_distance, algorithm='ball_tree').fit(X)  
     
         #-- putting a label to each galaxy. This label allows us to assign each galaxy to a substructure
         label_cluster_bic = cluster.labels_ # the label_dbscan_bic is the label of each odentified substructure. This parameter is a numpy.ndarray
+
+        unique_ids, counts = np.unique(label_cluster_bic, return_counts=True)
+
+        for group_id, count in zip(unique_ids, counts):
+            # Si el grupo no es ruido (-1) y es menor al mínimo deseado
+            if group_id != -1 and count < n_galaxies:
+                # Convertimos a esas galaxias en ruido (-1)
+                label_cluster_bic[label_cluster_bic == group_id] = -1
 
         #-- selecting the labels of the groups found by DBSCAN in each redshift cut
         groups = np.unique(label_cluster_bic) # number of groups in each redshift cut
@@ -2889,3 +2983,116 @@ def lagasu_position(id_galaxy, ra_galaxy, dec_galaxy, range_cuts, galaxy_separat
         
             p_pos = p_pos + tam_groups[ii]
     # -- END OF LOOP --
+
+    #-- Here the correlative is assembled eliminating -1
+    p3 = [] # p3 is an array with the label of all idenitified substructures
+
+    #--- START OF LOOP ---
+    for j in range(0,len(p)):
+
+        if p[j] != -1:
+            p3 = np.append(p3, j)
+
+    for l in range(0,len(p3)):
+
+        p3[l] = l
+    # -- END OF LOOP --
+
+    #-- printing the total number of substructures in the cluster
+#    print("number of substructures =", len(p3))
+
+    #-- initializing the variables
+    p_pos = 0
+    correlative = 0
+
+    #-- Here the array p2 is assembled, which is an array with the label of all identified substructures plus noise
+    #--- START OF LOOP ---
+    for ii in range(0,len(tam_groups)):
+
+        for e in range(0,tam_groups[ii]):
+
+            if(e==0 and ii==0):
+                p2 = p[0]
+
+                if(p[0] != -1):
+                    correlative +=1
+
+            elif(p[p_pos+e]== -1):
+                p2 = np.append(p2,-1)
+
+            else:
+                p2 = np.append(p2,correlative)
+                correlative +=1
+
+        p_pos = p_pos + tam_groups[ii]
+    # -- END OF LOOP --
+
+    #-- This implementation allows us to consider the case of a little sample in which all galaxies are assign to a single substructure 
+    if type(groups_pos) == int:
+        groups_pos = np.array([groups_pos])
+    
+    else:
+        groups_pos = groups_pos
+#========================================================
+    #-- This loop allows us to assign a label from 0 to n lo each substructures plus noise which is labelled with -1
+    #--- START OF LOOP ---
+
+    #-- selecting the labels of the groups found by DBSCAN 
+    final_groups = np.unique(labels_dbscan_bic)
+
+    if  len(final_groups) == 1: # in this case none of galaxies are part of a subhalo
+
+        labels_dbscan_corr = labels_dbscan_bic 
+    
+    else: 
+        for k in range(0,len(labels_dbscan_bic)):
+            aux = 0
+            
+            if(k == 0):
+                while( labels_dbscan_bic[k] != p[groups_pos[sorted_labels_bic[k]]+aux]):
+                    aux +=1
+                labels_dbscan_corr = p2[groups_pos[sorted_labels_bic[k]]+aux]
+
+            else:
+                while( labels_dbscan_bic[k] != p[groups_pos[sorted_labels_bic[k]]+aux]):
+                    aux +=1
+                labels_dbscan_corr = np.append(labels_dbscan_corr,p2[groups_pos[sorted_labels_bic[k]]+aux])
+    # -- END OF LOOP --
+
+    for ii in range(0,n_cuts_bic):
+
+        n_gmm_bic_groups = np.where(labels_bic == ii)[0]
+
+        id_gal_out = id_galaxy[n_gmm_bic_groups]
+        ra_out = ra_galaxy[n_gmm_bic_groups]
+        dec_out = dec_galaxy[n_gmm_bic_groups]
+        gmm_labels = labels_bic[n_gmm_bic_groups]
+        labels_gmm_dbscan = labels_dbscan_bic[n_gmm_bic_groups]
+
+        if ii != 0:
+            id_substructures = np.append(id_substructures,id_gal_out)
+            ra_substructures = np.append(ra_substructures,ra_out)
+            dec_substructures = np.append(dec_substructures, dec_out)
+            gmm_substructures = np.append(gmm_substructures, gmm_labels)
+            gmm_dbscan_substructures = np.append(gmm_dbscan_substructures, labels_gmm_dbscan)
+            
+        else:              #-- process of the first iteration: defining variables
+            id_substructures = id_gal_out
+            ra_substructures = ra_out
+            dec_substructures = dec_out
+            gmm_substructures = gmm_labels
+            gmm_dbscan_substructures = labels_gmm_dbscan
+
+    # -- renaming the substructures identified by using lagasu in order to identify the principal halo and separate it from the substructures
+    # if label == -1 the galaxy is only part of the principal halo. If galaxy is != -1 the galaxy is in a substructure
+
+    #-- building matrix with output quantities
+    lagasu_parameters = np.array([id_substructures, ra_substructures, dec_substructures, gmm_substructures, gmm_dbscan_substructures, labels_dbscan_corr], dtype=object)
+
+    print("-- ending lagasu_position --")
+
+    #-- returning output quantity
+    return lagasu_parameters
+
+#####################################################################################################################################################################################
+#####################################################################################################################################################################################
